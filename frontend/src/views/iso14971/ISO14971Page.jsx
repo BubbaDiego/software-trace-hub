@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import Box from '@mui/material/Box';
+import PageTitle from 'components/PageTitle';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Typography from '@mui/material/Typography';
@@ -37,9 +38,10 @@ export default function ISO14971Page() {
     <Box sx={{ p: 2 }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          ISO 14971 Risk Management
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>ISO</Typography>
+          <Typography sx={{ fontSize: 24, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1, ml: 0.5 }}>14971</Typography>
+        </Box>
         <Typography variant="body2" sx={{ color: 'text.secondary' }}>
           Application of risk management to medical devices
         </Typography>

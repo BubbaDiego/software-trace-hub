@@ -20,6 +20,56 @@ const NAV_ITEMS = [
   { path: '/data-sources', label: 'Data Sources', icon: IconDatabaseImport, color: 'secondary.main' },
 ];
 
+// ── Animated Orbitor (from Sonic10) ──────────────────────────────
+function Orbitor({ size = 48 }) {
+  const c = size / 2;
+  const ringR = size * 0.36;
+  const innerR = size * 0.27;
+  const coreR = size * 0.2;
+  const centerR = size * 0.08;
+  const orbR = size * 0.44;
+  const orbDotR = size * 0.05;
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ flexShrink: 0, display: 'block' }}>
+      <circle cx={c} cy={c} r={coreR} fill="url(#coreGlow)" />
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from={`0 ${c} ${c}`} to={`360 ${c} ${c}`} dur="10s" repeatCount="indefinite" />
+        <path d={describeArc(c, c, ringR, 0, 180)} fill="none" stroke="#4af" strokeWidth="2" strokeLinecap="round" />
+        <path d={describeArc(c, c, ringR, 180, 340)} fill="none" stroke="rgba(68,170,255,0.3)" strokeWidth="2" strokeLinecap="round" />
+      </g>
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from={`0 ${c} ${c}`} to={`-360 ${c} ${c}`} dur="14s" repeatCount="indefinite" />
+        <path d={describeArc(c, c, innerR, 0, 140)} fill="none" stroke="rgba(168,85,247,0.5)" strokeWidth="1" strokeLinecap="round" />
+      </g>
+      <circle cx={c} cy={c} r={centerR} fill="#4af" />
+      <g>
+        <animateTransform attributeName="transform" type="rotate" from={`0 ${c} ${c}`} to={`360 ${c} ${c}`} dur="10s" repeatCount="indefinite" />
+        <circle cx={c} cy={c - orbR} r={orbDotR} fill="#4af" />
+      </g>
+      <defs>
+        <radialGradient id="coreGlow">
+          <stop offset="0%" stopColor="rgba(68,170,255,0.15)" />
+          <stop offset="60%" stopColor="rgba(68,170,255,0.03)" />
+          <stop offset="100%" stopColor="rgba(68,170,255,0)" />
+        </radialGradient>
+      </defs>
+    </svg>
+  );
+}
+
+function describeArc(cx, cy, r, startAngle, endAngle) {
+  const start = polarToCartesian(cx, cy, r, endAngle);
+  const end = polarToCartesian(cx, cy, r, startAngle);
+  const largeArc = endAngle - startAngle <= 180 ? '0' : '1';
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`;
+}
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
 export default function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -40,14 +90,14 @@ export default function AppLayout() {
           }
         }}
       >
-        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconClipboardList size={28} color="#4678d8" />
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.3px' }}>
-              Trace Hub
+        <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 0.5, userSelect: 'none' }}>
+          <Orbitor size={42} />
+          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
+            <Typography sx={{ fontSize: 20, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>
+              TRACE
             </Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
-              RTM · IEC 62304 · ISO 14971
+            <Typography sx={{ fontSize: 20, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1 }}>
+              HUB
             </Typography>
           </Box>
         </Box>

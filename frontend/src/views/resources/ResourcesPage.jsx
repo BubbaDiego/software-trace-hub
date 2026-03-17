@@ -19,9 +19,10 @@ export default function ResourcesPage() {
   return (
     <Box sx={{ p: 2 }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, flexWrap: 'wrap' }}>
-        <Typography variant="h4" sx={{ fontWeight: 700 }}>
-          FY26 Resource Planner
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>RESOURCE</Typography>
+          <Typography sx={{ fontSize: 24, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1, ml: 0.5 }}>PLANNER</Typography>
+        </Box>
         <Typography variant="body2" sx={{ color: 'text.secondary', flex: 1 }}>
           Infusion Software &mdash; 59 people, 10 projects, 8 teams
         </Typography>

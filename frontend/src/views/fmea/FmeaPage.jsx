@@ -24,9 +24,10 @@ export default function FmeaPage() {
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700 }}>
-          Software FMEA
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0 }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>SOFTWARE</Typography>
+          <Typography sx={{ fontSize: 24, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1, ml: 0.5 }}>FMEA</Typography>
+        </Box>
         {overview.total > 0 && (
           <>
             <Typography variant="caption" sx={{ bgcolor: 'error.main', color: '#fff', px: 1, py: 0.25, borderRadius: 1, fontWeight: 600, fontSize: '0.7rem' }}>

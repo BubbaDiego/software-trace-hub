@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { useTheme } from '@mui/material/styles';
 import Box from '@mui/material/Box';
+import PageTitle from 'components/PageTitle';
 import Tabs from '@mui/material/Tabs';
 import Tab from '@mui/material/Tab';
 import Typography from '@mui/material/Typography';
@@ -72,7 +73,7 @@ function ImportPanel({ onDone }) {
 
   return (
     <Box sx={{ py: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-      <Typography variant="h4" sx={{ fontWeight: 700 }}>RTM Tracker</Typography>
+      <PageTitle bold="RTM" accent="TRACKER" />
       <Typography variant="body1" color="text.secondary">
         Import an RTM Excel file to get started
       </Typography>
@@ -263,9 +264,10 @@ export default function RTMPage() {
           flexWrap: 'wrap'
         }}
       >
-        <Typography variant="h4" sx={{ fontWeight: 700, mr: 1 }}>
-          RTM Tracker
-        </Typography>
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0, mr: 1 }}>
+          <Typography sx={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>RTM</Typography>
+          <Typography sx={{ fontSize: 24, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1, ml: 0.5 }}>TRACKER</Typography>
+        </Box>
         {activeProject && (
           <Chip
             label={activeProject.version || activeProject.name}

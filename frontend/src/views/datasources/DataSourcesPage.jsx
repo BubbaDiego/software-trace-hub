@@ -299,9 +299,10 @@ export default function DataSourcesPage() {
 
   return (
     <Box>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
-        Data Sources
-      </Typography>
+      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0, mb: 0.5 }}>
+        <Typography sx={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>DATA</Typography>
+        <Typography sx={{ fontSize: 24, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1, ml: 0.5 }}>SOURCES</Typography>
+      </Box>
       <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
         Upload and manage input Excel files that feed the traceability, compliance, and resource views.
       </Typography>
