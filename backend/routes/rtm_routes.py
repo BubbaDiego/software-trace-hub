@@ -1,6 +1,6 @@
 """RTM API routes — /api/rtm/*
 
-Fully self-contained: no DataLocker dependency. Uses RTMCore + RTMDatabase directly.
+Requirements Traceability Matrix: projects, import, overview, requirements, gaps, snapshots, export.
 """
 from __future__ import annotations
 
@@ -45,15 +45,10 @@ async def import_excel(
     project_name: Optional[str] = Query("", description="Display name"),
     project_version: Optional[str] = Query("", description="Version string"),
 ):
-    """Upload and import an RTM Excel file (.xlsx).
-
-    Parses the spreadsheet, creates requirement and evidence records,
-    runs gap analysis, and takes an initial snapshot.
-    """
+    """Upload and import an RTM Excel file (.xlsx)."""
     if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
         raise HTTPException(400, "File must be .xlsx or .xls")
 
-    # Save upload to temp file
     tmp_dir = tempfile.mkdtemp(prefix="rtm_upload_")
     tmp_path = os.path.join(tmp_dir, file.filename)
     try:
@@ -127,79 +122,6 @@ async def import_bundled_excel(
         raise HTTPException(400, str(e))
     except Exception as e:
         raise HTTPException(500, f"Import failed: {e}")
-
-
-# ── STA Import (enrichment) ────────────────────────────────────────
-
-@router.post("/sta-import/{project_id}")
-async def import_sta(
-    project_id: int,
-    file: UploadFile = File(...),
-    sw_trace_sheet: Optional[str] = Query(None),
-    div_sheet: Optional[str] = Query(None),
-):
-    """Upload STA Excel to enrich an existing RTM project."""
-    if not file.filename or not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(400, "File must be .xlsx or .xls")
-
-    tmp_dir = tempfile.mkdtemp(prefix="sta_upload_")
-    tmp_path = os.path.join(tmp_dir, file.filename)
-    try:
-        with open(tmp_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-
-        result = _rtm().import_sta(
-            file_path=tmp_path,
-            project_id=project_id,
-            sw_trace_sheet=sw_trace_sheet,
-            div_sheet=div_sheet,
-        )
-        return result
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"STA import failed: {e}")
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-@router.post("/sta-import-bundled/{project_id}")
-async def import_bundled_sta(project_id: int):
-    """Import the bundled STA Excel file to enrich an existing project."""
-    bundled = os.path.join(
-        os.path.dirname(__file__), "..", "core", "rtm_core",
-        "Alaris System v12.6 Software Traceability Analysis.xlsx"
-    )
-    bundled = os.path.normpath(bundled)
-    if not os.path.isfile(bundled):
-        raise HTTPException(404, f"Bundled STA file not found at: {bundled}")
-
-    try:
-        return _rtm().import_sta(file_path=bundled, project_id=project_id)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"STA import failed: {e}")
-
-
-@router.get("/sta-summary/{project_id}")
-async def get_sta_summary(project_id: int):
-    """Get STA enrichment summary for a project."""
-    return _rtm().get_sta_summary(project_id)
-
-
-@router.get("/sta-versions/{project_id}")
-async def get_version_matrix(
-    project_id: int,
-    search: Optional[str] = Query(None),
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
-):
-    """Query version verification matrix."""
-    return _rtm().get_version_matrix(
-        project_id, limit=limit, offset=offset, search=search
-    )
 
 
 # ── Overview / Stats ───────────────────────────────────────────────
@@ -398,90 +320,3 @@ async def export_project(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=rtm_project_{project_id}.csv"},
     )
-
-
-# ── FMEA Import ───────────────────────────────────────────────────
-
-@router.post("/fmea/import")
-async def import_fmea(file: UploadFile = File(...)):
-    """Upload and import a Software FMEA Excel file."""
-    if not file.filename or not file.filename.endswith((".xlsx", ".xls", ".xlsm")):
-        raise HTTPException(400, "File must be .xlsx, .xls, or .xlsm")
-
-    tmp_dir = tempfile.mkdtemp(prefix="fmea_upload_")
-    tmp_path = os.path.join(tmp_dir, file.filename)
-    try:
-        with open(tmp_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-        return _rtm().import_fmea(tmp_path)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"FMEA import failed: {e}")
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-@router.get("/fmea/summary")
-async def get_fmea_summary():
-    """Get FMEA import summary."""
-    return _rtm().get_fmea_summary()
-
-
-@router.get("/fmea/overview")
-async def get_fmea_overview():
-    """Get FMEA executive overview with breakdowns."""
-    return _rtm().get_fmea_overview()
-
-
-@router.get("/fmea/records")
-async def get_fmea_records(
-    product: Optional[str] = Query(None),
-    search: Optional[str] = Query(None),
-    limit: int = Query(100, ge=1, le=1000),
-    offset: int = Query(0, ge=0),
-):
-    """Query FMEA records with optional product filter and search."""
-    return _rtm().get_fmea_records(product=product, search=search, limit=limit, offset=offset)
-
-
-@router.get("/fmea/common-causes")
-async def get_fmea_common_causes():
-    """Get all FMEA common causes."""
-    return _rtm().get_fmea_common_causes()
-
-
-@router.get("/fmea/product-matrix")
-async def get_fmea_product_matrix():
-    """Get cross-product hazard matrix data."""
-    return _rtm().get_fmea_product_matrix()
-
-
-# ── Resource Import ───────────────────────────────────────────────
-
-@router.post("/resources/import")
-async def import_resources(file: UploadFile = File(...)):
-    """Upload and import a resource planning Excel file."""
-    if not file.filename or not file.filename.endswith((".xlsx", ".xls", ".xlsm")):
-        raise HTTPException(400, "File must be .xlsx, .xls, or .xlsm")
-
-    tmp_dir = tempfile.mkdtemp(prefix="res_upload_")
-    tmp_path = os.path.join(tmp_dir, file.filename)
-    try:
-        with open(tmp_path, "wb") as f:
-            content = await file.read()
-            f.write(content)
-        return _rtm().import_resources(tmp_path)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    except Exception as e:
-        raise HTTPException(500, f"Resource import failed: {e}")
-    finally:
-        shutil.rmtree(tmp_dir, ignore_errors=True)
-
-
-@router.get("/resources/summary")
-async def get_resource_summary():
-    """Get resource import summary."""
-    return _rtm().get_resource_summary()

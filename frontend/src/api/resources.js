@@ -1,21 +1,38 @@
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { useMemo } from 'react';
 import { fetcher } from 'utils/axios';
+import axiosServices from 'utils/axios';
 
 // ---------------------------------------------------------------------------
 // Endpoints
 // ---------------------------------------------------------------------------
 const EP = {
+  summary: '/api/resources/summary',
   overview: '/api/resources/overview',
   projects: '/api/resources/projects',
   people: '/api/resources/people',
   timeline: '/api/resources/timeline',
-  teams: '/api/resources/teams'
+  teams: '/api/resources/teams',
 };
 
 // ---------------------------------------------------------------------------
 // Read hooks
 // ---------------------------------------------------------------------------
+
+export function useResourceSummary() {
+  const { data, isLoading, error, mutate: refresh } = useSWR(
+    EP.summary,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  return useMemo(() => ({
+    resourceSummary: data || {},
+    resourceLoading: isLoading,
+    resourceError: error,
+    refreshResources: refresh,
+  }), [data, error, isLoading, refresh]);
+}
+
 export function useResourceOverview() {
   const { data, isLoading, error, mutate: refresh } = useSWR(EP.overview, fetcher, { revalidateOnFocus: false });
   return useMemo(() => ({ overview: data ?? null, loading: isLoading, error, refresh }), [data, isLoading, error, refresh]);
@@ -39,4 +56,16 @@ export function useResourceTimeline() {
 export function useResourceTeams() {
   const { data, isLoading, error, mutate: refresh } = useSWR(EP.teams, fetcher, { revalidateOnFocus: false });
   return useMemo(() => ({ teams: data ?? [], loading: isLoading, error, refresh }), [data, isLoading, error, refresh]);
+}
+
+// ---------------------------------------------------------------------------
+// Mutations
+// ---------------------------------------------------------------------------
+
+export async function importResourceFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await axiosServices.post('/api/resources/import', fd);
+  mutate(EP.summary);
+  return res.data;
 }

@@ -20,18 +20,10 @@ import {
   IconX,
 } from '@tabler/icons-react';
 
-import {
-  useRtmProjects,
-  importRtmFile,
-  importBundledRtm,
-  importStaFile,
-  importBundledSta,
-  useRtmStaSummary,
-  importFmeaFile,
-  useFmeaSummary,
-  importResourceFile,
-  useResourceSummary,
-} from 'api/rtm';
+import { useRtmProjects, importRtmFile, importBundledRtm } from 'api/rtm';
+import { importStaFile, importBundledSta, useStaSummary } from 'api/sta';
+import { importFmeaFile, useFmeaSummary } from 'api/fmea';
+import { importResourceFile, useResourceSummary } from 'api/resources';
 
 // ---------------------------------------------------------------------------
 // Data Sources — centralized upload hub for all input Excel files
@@ -227,7 +219,7 @@ function SourceCard({ source, status, onUpload, onBundled, loading, result }) {
 export default function DataSourcesPage() {
   const { projects, projectsLoading } = useRtmProjects();
   const activeProject = projects?.[0];
-  const { staSummary } = useRtmStaSummary(activeProject?.id);
+  const { staSummary } = useStaSummary(activeProject?.id);
   const { fmeaSummary, refreshFmea } = useFmeaSummary();
   const { resourceSummary, refreshResources } = useResourceSummary();
 

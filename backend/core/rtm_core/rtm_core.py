@@ -1,15 +1,13 @@
-"""RTMCore — facade for all RTM operations.
+"""RTMCore — facade for RTM (Requirements Traceability Matrix) operations.
 
 Usage:
-    from backend.core.rtm_core import RTMCore
+    from core.rtm_core import RTMCore
 
     rtm = RTMCore()
     result = rtm.import_excel("/path/to/rtm.xlsx")
     overview = rtm.get_overview(result["project_id"])
 """
 from __future__ import annotations
-
-from typing import Optional
 
 from .rtm_db import RTMDatabase
 from .models import RTMOverview, RTMModuleCoverage, RTMSnapshot
@@ -53,139 +51,6 @@ class RTMCore:
 
         return result
 
-    def import_sta(
-        self,
-        file_path: str,
-        project_id: int,
-        sw_trace_sheet: str | None = None,
-        div_sheet: str | None = None,
-    ) -> dict:
-        """Import STA Excel to enrich an existing RTM project."""
-        from .sta_importer import import_sta_excel
-        return import_sta_excel(
-            file_path=file_path,
-            project_id=project_id,
-            sw_trace_sheet=sw_trace_sheet,
-            div_sheet=div_sheet,
-            db=self._db,
-        )
-
-    def import_fmea(self, file_path: str, sheet_name: str | None = None) -> dict:
-        """Import an FMEA Excel file."""
-        from .fmea_importer import import_fmea_excel
-        return import_fmea_excel(file_path, sheet_name=sheet_name, db=self._db)
-
-    def import_resources(self, file_path: str, sheet_name: str | None = None) -> dict:
-        """Import a resource planning Excel file."""
-        from .resource_importer import import_resource_excel
-        return import_resource_excel(file_path, sheet_name=sheet_name, db=self._db)
-
-    def get_fmea_summary(self) -> dict:
-        """Get FMEA import summary."""
-        count = self._db.fetchone("SELECT COUNT(*) as c FROM fmea_records")["c"]
-        cc_count = self._db.fetchone("SELECT COUNT(*) as c FROM fmea_common_causes")["c"]
-        return {"fmea_records": count, "common_causes": cc_count, "imported": count > 0}
-
-    def get_fmea_overview(self) -> dict:
-        """Get FMEA executive overview stats."""
-        total = self._db.fetchone("SELECT COUNT(*) as c FROM fmea_records")["c"]
-        hazards = self._db.fetchone("SELECT COUNT(DISTINCT hazard) as c FROM fmea_records WHERE hazard != ''")["c"]
-        failure_modes = self._db.fetchone("SELECT COUNT(DISTINCT failure_mode) as c FROM fmea_records WHERE failure_mode != ''")["c"]
-        critical = self._db.fetchone("SELECT COUNT(*) as c FROM fmea_records WHERE critical_component LIKE '%yes%' OR critical_component LIKE '%Yes%'")["c"]
-        common_causes = self._db.fetchone("SELECT COUNT(*) as c FROM fmea_common_causes")["c"]
-
-        # Product breakdown
-        products = self._db.fetchall(
-            "SELECT product, COUNT(*) as count FROM fmea_records WHERE product != '' GROUP BY product ORDER BY count DESC"
-        )
-
-        # RCM type breakdown
-        rcm_types = self._db.fetchall(
-            "SELECT rcm_type, COUNT(*) as count FROM fmea_records WHERE rcm_type != '' GROUP BY rcm_type ORDER BY count DESC"
-        )
-
-        # Hazard category breakdown (first hazard line, first 6 chars as category)
-        hazard_cats = self._db.fetchall(
-            "SELECT SUBSTR(hazard, 1, 6) as category, COUNT(*) as count FROM fmea_records WHERE hazard != '' GROUP BY category ORDER BY count DESC"
-        )
-
-        return {
-            "total": total,
-            "distinct_hazards": hazards,
-            "distinct_failure_modes": failure_modes,
-            "critical_components": critical,
-            "common_causes": common_causes,
-            "products": [dict(r) for r in products],
-            "rcm_types": [dict(r) for r in rcm_types],
-            "hazard_categories": [dict(r) for r in hazard_cats],
-        }
-
-    def get_fmea_records(self, product=None, search=None, limit=100, offset=0) -> dict:
-        """Query FMEA records with filters."""
-        conditions = ["1=1"]
-        params = []
-
-        if product:
-            conditions.append("product = ?")
-            params.append(product)
-
-        if search:
-            conditions.append(
-                "(fmea_id LIKE ? OR failure_mode LIKE ? OR hazard LIKE ? OR component LIKE ? OR cause LIKE ?)"
-            )
-            like = f"%{search}%"
-            params.extend([like, like, like, like, like])
-
-        where = " AND ".join(conditions)
-
-        total = self._db.fetchone(f"SELECT COUNT(*) as c FROM fmea_records WHERE {where}", tuple(params))["c"]
-
-        query_params = list(params) + [limit, offset]
-        rows = self._db.fetchall(
-            f"SELECT * FROM fmea_records WHERE {where} ORDER BY id LIMIT ? OFFSET ?",
-            tuple(query_params),
-        )
-
-        return {"items": [dict(r) for r in rows], "total": total, "limit": limit, "offset": offset}
-
-    def get_fmea_common_causes(self) -> list:
-        """Get all FMEA common causes."""
-        rows = self._db.fetchall("SELECT * FROM fmea_common_causes ORDER BY module, id")
-        return [dict(r) for r in rows]
-
-    def get_fmea_product_matrix(self) -> dict:
-        """Get cross-product hazard matrix data."""
-        rows = self._db.fetchall(
-            "SELECT product, SUBSTR(hazard, 1, 6) as hazard_cat, COUNT(*) as count "
-            "FROM fmea_records WHERE product != '' AND hazard != '' "
-            "GROUP BY product, hazard_cat ORDER BY product, count DESC"
-        )
-
-        products = []
-        for r in self._db.fetchall("SELECT DISTINCT product FROM fmea_records WHERE product != '' ORDER BY product"):
-            prod = r["product"]
-            prod_rows = self._db.fetchall(
-                "SELECT COUNT(*) as total, "
-                "SUM(CASE WHEN critical_component LIKE '%yes%' OR critical_component LIKE '%Yes%' THEN 1 ELSE 0 END) as critical, "
-                "COUNT(DISTINCT failure_mode) as failure_modes "
-                "FROM fmea_records WHERE product = ?",
-                (prod,)
-            )
-            pr = dict(prod_rows[0]) if prod_rows else {}
-            pr["product"] = prod
-            products.append(pr)
-
-        return {
-            "matrix": [dict(r) for r in rows],
-            "products": products,
-        }
-
-    def get_resource_summary(self) -> dict:
-        """Get resource import summary."""
-        people = self._db.fetchone("SELECT COUNT(*) as c FROM resource_people")["c"]
-        allocs = self._db.fetchone("SELECT COUNT(*) as c FROM resource_allocations")["c"]
-        return {"people_count": people, "allocation_rows": allocs, "imported": people > 0}
-
     def import_all_sheets(self, file_path: str) -> list[dict]:
         """Import all RTM-like sheets from an Excel file."""
         from .importer import import_all_sheets
@@ -209,7 +74,7 @@ class RTMCore:
         return compute_module_coverage(project_id, self._db)
 
     def get_heatmap(self, project_id: int, top_n: int = 15) -> dict:
-        """Get feature × module coverage heatmap."""
+        """Get feature x module coverage heatmap."""
         from .analyzer import compute_heatmap
         return compute_heatmap(project_id, top_n, self._db)
 
@@ -318,7 +183,7 @@ class RTMCore:
         )
         result["gaps"] = [dict(g) for g in gaps]
 
-        # STA enrichment (if present)
+        # STA enrichment (cross-domain read — shared DB makes this possible)
         sta_spec = self._db.fetchall(
             "SELECT * FROM rtm_sta_spec_refs WHERE requirement_id = ?",
             (requirement_id,),
@@ -441,124 +306,6 @@ class RTMCore:
             (project_id,),
         )
         return [dict(r) for r in rows]
-
-    # ── STA Queries ──────────────────────────────────────────────────
-
-    def get_sta_summary(self, project_id: int) -> dict:
-        """Get STA enrichment summary stats for a project."""
-        project = self._db.fetchone(
-            "SELECT sta_enriched_at FROM rtm_projects WHERE id = ?",
-            (project_id,),
-        )
-        if not project:
-            return {"enriched": False}
-
-        spec_count = self._db.fetchone(
-            "SELECT COUNT(*) as c FROM rtm_sta_spec_refs WHERE project_id = ?",
-            (project_id,),
-        )["c"]
-        ev_count = self._db.fetchone(
-            "SELECT COUNT(*) as c FROM rtm_sta_module_evidence WHERE project_id = ?",
-            (project_id,),
-        )["c"]
-        design_count = self._db.fetchone(
-            "SELECT COUNT(*) as c FROM rtm_sta_design_outputs WHERE project_id = ?",
-            (project_id,),
-        )["c"]
-        ver_count = self._db.fetchone(
-            "SELECT COUNT(*) as c FROM rtm_sta_version_verification WHERE project_id = ?",
-            (project_id,),
-        )["c"]
-
-        versions = self._db.fetchall(
-            "SELECT DISTINCT version_label FROM rtm_sta_version_verification "
-            "WHERE project_id = ? ORDER BY version_label",
-            (project_id,),
-        )
-
-        return {
-            "enriched": bool(project["sta_enriched_at"]),
-            "sta_enriched_at": project["sta_enriched_at"],
-            "spec_refs": spec_count,
-            "module_evidence": ev_count,
-            "design_outputs": design_count,
-            "version_records": ver_count,
-            "versions_available": [v["version_label"] for v in versions],
-        }
-
-    def get_version_matrix(
-        self,
-        project_id: int,
-        limit: int = 100,
-        offset: int = 0,
-        search: str | None = None,
-    ) -> dict:
-        """Get version verification matrix — SRD IDs with per-version test refs."""
-        conditions = ["v.project_id = ?"]
-        params: list = [project_id]
-
-        if search:
-            conditions.append("v.srd_id LIKE ?")
-            params.append(f"%{search}%")
-
-        where = " AND ".join(conditions)
-
-        # Get distinct SRD IDs count
-        total = self._db.fetchone(
-            f"SELECT COUNT(DISTINCT srd_id) as c FROM rtm_sta_version_verification v "
-            f"WHERE {where}",
-            tuple(params),
-        )["c"]
-
-        # Get paginated distinct SRD IDs
-        srd_params = list(params) + [limit, offset]
-        srd_rows = self._db.fetchall(
-            f"SELECT DISTINCT srd_id FROM rtm_sta_version_verification v "
-            f"WHERE {where} ORDER BY srd_id LIMIT ? OFFSET ?",
-            tuple(srd_params),
-        )
-        srd_ids = [r["srd_id"] for r in srd_rows]
-
-        if not srd_ids:
-            return {"items": [], "total": total, "versions": []}
-
-        placeholders = ",".join("?" * len(srd_ids))
-        all_rows = self._db.fetchall(
-            f"SELECT srd_id, version_label, test_ref, ter_ref "
-            f"FROM rtm_sta_version_verification "
-            f"WHERE project_id = ? AND srd_id IN ({placeholders}) "
-            f"ORDER BY srd_id, version_label",
-            (project_id, *srd_ids),
-        )
-
-        # Pivot into {srd_id: {version_label: {test_ref, ter_ref}}}
-        items = []
-        current: dict | None = None
-        for row in all_rows:
-            srd = row["srd_id"]
-            if current is None or current["srd_id"] != srd:
-                if current:
-                    items.append(current)
-                current = {"srd_id": srd, "versions": {}}
-            current["versions"][row["version_label"]] = {
-                "test_ref": row["test_ref"],
-                "ter_ref": row["ter_ref"],
-            }
-        if current:
-            items.append(current)
-
-        # Get all version labels for column headers
-        versions = self._db.fetchall(
-            "SELECT DISTINCT version_label FROM rtm_sta_version_verification "
-            "WHERE project_id = ? ORDER BY version_label",
-            (project_id,),
-        )
-
-        return {
-            "items": items,
-            "total": total,
-            "versions": [v["version_label"] for v in versions],
-        }
 
     def delete_project(self, project_id: int) -> bool:
         """Delete a project and all associated data (cascades via FK)."""

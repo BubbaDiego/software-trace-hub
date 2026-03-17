@@ -1,11 +1,34 @@
+import useSWR, { mutate } from 'swr';
 import { useMemo } from 'react';
-import useSWR from 'swr';
 import { fetcher } from 'utils/axios';
+import axiosServices from 'utils/axios';
 
 // ── FMEA API hooks ───────────────────────────────────────────────
 
+const EP = {
+  summary: '/api/fmea/summary',
+  overview: '/api/fmea/overview',
+  records: '/api/fmea/records',
+  commonCauses: '/api/fmea/common-causes',
+  productMatrix: '/api/fmea/product-matrix',
+};
+
+export function useFmeaSummary() {
+  const { data, isLoading, error, mutate: refresh } = useSWR(
+    EP.summary,
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  return useMemo(() => ({
+    fmeaSummary: data || {},
+    fmeaLoading: isLoading,
+    fmeaError: error,
+    refreshFmea: refresh,
+  }), [data, error, isLoading, refresh]);
+}
+
 export function useFmeaOverview() {
-  const { data, isLoading, error, mutate } = useSWR('/api/rtm/fmea/overview', fetcher, {
+  const { data, isLoading, error, mutate } = useSWR(EP.overview, fetcher, {
     revalidateOnFocus: false,
   });
   return useMemo(() => ({
@@ -22,7 +45,7 @@ export function useFmeaRecords(product, search, limit = 100, offset = 0) {
   if (search) params.set('search', search);
   params.set('limit', String(limit));
   params.set('offset', String(offset));
-  const key = `/api/rtm/fmea/records?${params.toString()}`;
+  const key = `${EP.records}?${params.toString()}`;
 
   const { data, isLoading, error, mutate } = useSWR(key, fetcher, {
     revalidateOnFocus: false,
@@ -37,7 +60,7 @@ export function useFmeaRecords(product, search, limit = 100, offset = 0) {
 }
 
 export function useFmeaCommonCauses() {
-  const { data, isLoading, error, mutate } = useSWR('/api/rtm/fmea/common-causes', fetcher, {
+  const { data, isLoading, error, mutate } = useSWR(EP.commonCauses, fetcher, {
     revalidateOnFocus: false,
   });
   return useMemo(() => ({
@@ -49,7 +72,7 @@ export function useFmeaCommonCauses() {
 }
 
 export function useFmeaProductMatrix() {
-  const { data, isLoading, error, mutate } = useSWR('/api/rtm/fmea/product-matrix', fetcher, {
+  const { data, isLoading, error, mutate } = useSWR(EP.productMatrix, fetcher, {
     revalidateOnFocus: false,
   });
   return useMemo(() => ({
@@ -59,4 +82,15 @@ export function useFmeaProductMatrix() {
     matrixError: error,
     refreshMatrix: mutate,
   }), [data, error, isLoading, mutate]);
+}
+
+// ── Mutations ────────────────────────────────────────────────────
+
+export async function importFmeaFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await axiosServices.post('/api/fmea/import', fd);
+  mutate(EP.summary);
+  mutate(EP.overview);
+  return res.data;
 }

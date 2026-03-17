@@ -17,7 +17,7 @@ import TablePagination from '@mui/material/TablePagination';
 import TextField from '@mui/material/TextField';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { useRtmStaVersions } from 'api/rtm';
+import { useStaVersions } from 'api/sta';
 
 function KpiCard({ label, value, sub, color }) {
   return (
@@ -44,7 +44,7 @@ function VersionMatrix({ projectId }) {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
 
-  const { items, total, versions, loading } = useRtmStaVersions(projectId, {
+  const { items, total, versions, loading } = useStaVersions(projectId, {
     search: search || undefined,
     limit: rowsPerPage,
     offset: page * rowsPerPage

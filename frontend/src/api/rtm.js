@@ -15,8 +15,6 @@ const EP = {
   snapshots: (id) => `/api/rtm/snapshots/${id}`,
   exportJson: (id) => `/api/rtm/export/${id}?format=json`,
   exportCsv: (id) => `/api/rtm/export/${id}?format=csv`,
-  staSummary: (id) => `/api/rtm/sta-summary/${id}`,
-  staVersions: (id) => `/api/rtm/sta-versions/${id}`
 };
 
 // ── Projects ──────────────────────────────────────────────────────
@@ -154,63 +152,7 @@ export function useRtmSnapshots(projectId) {
   }), [data, isLoading, error]);
 }
 
-// ── STA Enrichment ────────────────────────────────────────────────
-
-export function useRtmStaSummary(projectId) {
-  const key = projectId ? EP.staSummary(projectId) : null;
-  const { data, isLoading, error, mutate: refresh } = useSWR(key, fetcher, {
-    revalidateOnFocus: false
-  });
-  return useMemo(() => ({
-    staSummary: data ?? null,
-    loading: isLoading,
-    error,
-    refresh
-  }), [data, isLoading, error, refresh]);
-}
-
-export function useRtmStaVersions(projectId, { search, limit = 100, offset = 0 } = {}) {
-  const params = new URLSearchParams();
-  if (search) params.set('search', search);
-  params.set('limit', limit);
-  params.set('offset', offset);
-
-  const key = projectId ? `${EP.staVersions(projectId)}?${params.toString()}` : null;
-  const { data, isLoading, error, mutate: refresh } = useSWR(key, fetcher, {
-    revalidateOnFocus: false,
-    dedupingInterval: 2000
-  });
-  return useMemo(() => ({
-    items: data?.items ?? [],
-    total: data?.total ?? 0,
-    versions: data?.versions ?? [],
-    loading: isLoading,
-    error,
-    refresh
-  }), [data, isLoading, error, refresh]);
-}
-
 // ── Mutations ─────────────────────────────────────────────────────
-
-export async function importStaFile(projectId, file) {
-  const form = new FormData();
-  form.append('file', file);
-  const res = await axiosServices.post(`/api/rtm/sta-import/${projectId}`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
-  mutate(EP.projects);
-  mutate(EP.staSummary(projectId));
-  mutate(EP.overview(projectId));
-  return res.data;
-}
-
-export async function importBundledSta(projectId) {
-  const res = await axiosServices.post(`/api/rtm/sta-import-bundled/${projectId}`);
-  mutate(EP.projects);
-  mutate(EP.staSummary(projectId));
-  mutate(EP.overview(projectId));
-  return res.data;
-}
 
 export async function importBundledRtm({ projectName, projectVersion } = {}) {
   const params = new URLSearchParams();
@@ -259,50 +201,4 @@ export async function refreshGapAnalysis(projectId) {
 export async function takeRtmSnapshot(projectId) {
   const res = await axiosServices.post(EP.snapshots(projectId));
   return res.data;
-}
-
-// ── FMEA ──────────────────────────────────────────────────────────
-
-export async function importFmeaFile(file) {
-  const fd = new FormData();
-  fd.append('file', file);
-  const res = await axiosServices.post('/api/rtm/fmea/import', fd);
-  return res.data;
-}
-
-export function useFmeaSummary() {
-  const { data, isLoading, error, mutate: refresh } = useSWR(
-    '/api/rtm/fmea/summary',
-    fetcher,
-    { revalidateOnFocus: false }
-  );
-  return useMemo(() => ({
-    fmeaSummary: data || {},
-    fmeaLoading: isLoading,
-    fmeaError: error,
-    refreshFmea: refresh,
-  }), [data, error, isLoading, refresh]);
-}
-
-// ── Resources ─────────────────────────────────────────────────────
-
-export async function importResourceFile(file) {
-  const fd = new FormData();
-  fd.append('file', file);
-  const res = await axiosServices.post('/api/rtm/resources/import', fd);
-  return res.data;
-}
-
-export function useResourceSummary() {
-  const { data, isLoading, error, mutate: refresh } = useSWR(
-    '/api/rtm/resources/summary',
-    fetcher,
-    { revalidateOnFocus: false }
-  );
-  return useMemo(() => ({
-    resourceSummary: data || {},
-    resourceLoading: isLoading,
-    resourceError: error,
-    refreshResources: refresh,
-  }), [data, error, isLoading, refresh]);
 }

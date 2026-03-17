@@ -22,10 +22,8 @@ import Tooltip from '@mui/material/Tooltip';
 import { IconUpload, IconDatabase, IconCheck, IconX, IconShieldCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 
-import {
-  useRtmProjects, useRtmOverview, useRtmStaSummary,
-  importRtmFile, importBundledRtm, importStaFile, importBundledSta
-} from 'api/rtm';
+import { useRtmProjects, useRtmOverview, importRtmFile, importBundledRtm } from 'api/rtm';
+import { useStaSummary, importStaFile, importBundledSta } from 'api/sta';
 
 import ExecutiveOverview from './ExecutiveOverview';
 import FeatureTraceability from './FeatureTraceability';
@@ -231,7 +229,7 @@ export default function RTMPage() {
   const { projects, loading: projLoading, refresh: projRefresh } = useRtmProjects();
   const activeId = projectId ?? projects?.[0]?.id ?? null;
   const { overview, loading: ovLoading } = useRtmOverview(activeId);
-  const { staSummary, refresh: staRefresh } = useRtmStaSummary(activeId);
+  const { staSummary, refresh: staRefresh } = useStaSummary(activeId);
 
   const isStaEnriched = staSummary?.enriched === true;
 
