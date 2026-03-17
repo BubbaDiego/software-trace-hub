@@ -15,6 +15,23 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 BACKEND = os.path.join(ROOT, "backend")
 FRONTEND = os.path.join(ROOT, "frontend")
 
+# Auto-activate venv if not already in one
+def _find_venv_python():
+    for name in ("venv", ".venv"):
+        vdir = os.path.join(ROOT, name)
+        if sys.platform == "win32":
+            py = os.path.join(vdir, "Scripts", "python.exe")
+        else:
+            py = os.path.join(vdir, "bin", "python")
+        if os.path.isfile(py):
+            return py
+    return None
+
+if sys.prefix == sys.base_prefix:  # not in a venv
+    _venv_py = _find_venv_python()
+    if _venv_py:
+        sys.exit(subprocess.call([_venv_py] + sys.argv))
+
 
 def menu():
     print(BANNER)
