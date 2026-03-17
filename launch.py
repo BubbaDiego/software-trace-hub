@@ -48,19 +48,27 @@ def start_backend():
     print("\n  Starting backend on http://localhost:5000 ...")
     env = os.environ.copy()
     env["PYTHONPATH"] = BACKEND
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
     return subprocess.Popen(
         [sys.executable, "app.py"],
         cwd=BACKEND,
         env=env,
+        **kwargs,
     )
 
 
 def start_frontend():
     print("\n  Starting frontend on http://localhost:3001 ...")
     npm = "npm.cmd" if sys.platform == "win32" else "npm"
+    kwargs = {}
+    if sys.platform == "win32":
+        kwargs["creationflags"] = subprocess.CREATE_NEW_CONSOLE
     return subprocess.Popen(
         [npm, "run", "dev"],
         cwd=FRONTEND,
+        **kwargs,
     )
 
 
