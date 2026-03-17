@@ -260,3 +260,49 @@ export async function takeRtmSnapshot(projectId) {
   const res = await axiosServices.post(EP.snapshots(projectId));
   return res.data;
 }
+
+// ── FMEA ──────────────────────────────────────────────────────────
+
+export async function importFmeaFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await axiosServices.post('/api/rtm/fmea/import', fd);
+  return res.data;
+}
+
+export function useFmeaSummary() {
+  const { data, isLoading, error, mutate: refresh } = useSWR(
+    '/api/rtm/fmea/summary',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  return useMemo(() => ({
+    fmeaSummary: data || {},
+    fmeaLoading: isLoading,
+    fmeaError: error,
+    refreshFmea: refresh,
+  }), [data, error, isLoading, refresh]);
+}
+
+// ── Resources ─────────────────────────────────────────────────────
+
+export async function importResourceFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res = await axiosServices.post('/api/rtm/resources/import', fd);
+  return res.data;
+}
+
+export function useResourceSummary() {
+  const { data, isLoading, error, mutate: refresh } = useSWR(
+    '/api/rtm/resources/summary',
+    fetcher,
+    { revalidateOnFocus: false }
+  );
+  return useMemo(() => ({
+    resourceSummary: data || {},
+    resourceLoading: isLoading,
+    resourceError: error,
+    refreshResources: refresh,
+  }), [data, error, isLoading, refresh]);
+}

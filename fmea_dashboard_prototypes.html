@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SW FMEA Dashboard — 5 Prototype Looks</title>
+<style>
+  :root {
+    --bg: #0b1220; --surface: #111d2e; --surface2: #162236; --border: #1e3048;
+    --text: #e0e6ed; --text2: #8899aa; --accent: #4fc3f7;
+    --green: #66bb6a; --yellow: #fdd835; --red: #ef5350; --orange: #ffa726;
+    --purple: #ab47bc; --pink: #ec407a; --teal: #26a69a; --cyan: #00d2d3;
+    --radius: 8px; --shadow: 0 2px 12px rgba(0,0,0,.35);
+    --cat: #ff4757; --crit: #ff7b42; --major: #ffaa00; --mod: #fdd835; --minor: #66bb6a; --neg: #8899aa;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  .proto-selector { background:var(--surface); border-bottom:1px solid var(--border); padding:12px 24px; display:flex; align-items:center; gap:16px; position:sticky; top:0; z-index:100; }
+  .proto-selector h1 { font-size:18px; font-weight:600; color:var(--accent); }
+  .proto-btn { padding:8px 20px; border-radius:6px; cursor:pointer; font-size:13px; font-weight:500;
+    background:transparent; border:1px solid var(--border); color:var(--text2); transition:all .2s; }
+  .proto-btn:hover { background:var(--surface2); color:var(--text); border-color:var(--text2); }
+  .proto-btn.active { background:var(--accent); color:#000; border-color:var(--accent); font-weight:700; }
+
+  .proto-page { display:none; padding:24px 32px; max-width:1500px; margin:0 auto; }
+  .proto-page.active { display:block; }
+
+  .page-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+  .page-sub { font-size:13px; color:var(--text2); margin-bottom:24px; }
+
+  .kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(170px,1fr)); gap:12px; margin-bottom:24px; }
+  .kpi { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; box-shadow:var(--shadow); }
+  .kpi .label { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--text2); margin-bottom:6px; }
+  .kpi .value { font-size:28px; font-weight:700; line-height:1; }
+  .kpi .sub { font-size:11px; color:var(--text2); margin-top:6px; }
+  .kpi .bar { height:3px; background:var(--border); border-radius:2px; margin-top:10px; overflow:hidden; }
+  .kpi .bar-fill { height:100%; border-radius:2px; }
+
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); margin-bottom:16px; overflow:hidden; }
+  .card-header { padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .card-title { font-size:14px; font-weight:600; }
+  .card-badge { font-size:11px; padding:3px 10px; border-radius:12px; font-weight:500; }
+  .card-body { padding:18px; }
+
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+  @media(max-width:1000px) { .two-col,.three-col { grid-template-columns:1fr; } }
+
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:10px 12px; font-size:10px; text-transform:uppercase; letter-spacing:.6px;
+    color:var(--text2); border-bottom:1px solid var(--border); font-weight:600; }
+  td { padding:8px 12px; border-bottom:1px solid rgba(30,48,72,.4); vertical-align:top; }
+  tr:hover td { background:rgba(79,195,247,.03); }
+
+  .badge { display:inline-block; padding:2px 10px; border-radius:10px; font-size:11px; font-weight:600; }
+  .sev-cat { background:rgba(255,71,87,.15); color:var(--cat); }
+  .sev-crit { background:rgba(255,123,66,.15); color:var(--crit); }
+  .sev-major { background:rgba(255,170,0,.15); color:var(--major); }
+  .sev-mod { background:rgba(253,216,53,.12); color:var(--mod); }
+  .sev-minor { background:rgba(102,187,106,.12); color:var(--minor); }
+  .sev-neg { background:rgba(136,153,170,.1); color:var(--neg); }
+
+  .bar-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+  .bar-label { width:140px; font-size:12px; color:var(--text2); flex-shrink:0; text-align:right; }
+  .bar-track { flex:1; height:22px; background:var(--border); border-radius:4px; overflow:hidden; position:relative; }
+  .bar-fill { height:100%; border-radius:4px; display:flex; align-items:center; padding-left:8px; font-size:10px; font-weight:700; color:rgba(0,0,0,.8); min-width:28px; transition:width .4s; }
+  .bar-val { width:40px; font-size:12px; font-weight:600; text-align:right; flex-shrink:0; }
+
+  .donut-wrap { display:flex; align-items:center; gap:24px; justify-content:center; padding:12px 0; }
+  .donut { width:140px; height:140px; border-radius:50%; position:relative; flex-shrink:0; }
+  .donut-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+  .donut-center .pct { font-size:26px; font-weight:700; }
+  .donut-center .lbl { font-size:10px; color:var(--text2); text-transform:uppercase; }
+  .legend { font-size:12px; }
+  .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .legend-dot { width:10px; height:10px; border-radius:3px; flex-shrink:0; }
+  .legend-val { margin-left:auto; font-weight:600; padding-left:12px; }
+
+  .matrix-grid { display:grid; gap:3px; font-size:11px; }
+  .matrix-cell { padding:8px 6px; border-radius:4px; text-align:center; font-weight:600; cursor:default; transition:transform .1s; }
+  .matrix-cell:hover { transform:scale(1.05); z-index:1; }
+  .matrix-header { background:transparent; color:var(--text2); font-weight:600; font-size:10px; text-transform:uppercase; }
+  .matrix-row-label { display:flex; align-items:center; justify-content:flex-end; padding-right:8px; font-size:11px; color:var(--text2); font-weight:600; }
+
+  .filter-bar { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .filter-btn { padding:6px 14px; border-radius:16px; border:1px solid var(--border); background:transparent;
+    color:var(--text2); cursor:pointer; font-size:12px; transition:all .2s; }
+  .filter-btn:hover,.filter-btn.active { border-color:var(--accent); color:var(--accent); background:rgba(79,195,247,.08); }
+
+  .product-card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:16px; }
+  .product-card .prod-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .product-card .prod-icon { width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:12px; font-weight:700; color:#000; }
+  .product-card .prod-name { font-size:16px; font-weight:700; }
+  .product-card .prod-count { font-size:12px; color:var(--text2); }
+  .product-card .mini-bar { height:6px; border-radius:3px; overflow:hidden; display:flex; gap:1px; margin-top:8px; }
+  .product-card .mini-bar div { height:100%; border-radius:2px; }
+
+  .cause-card { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:10px; }
+  .cause-card .cause-module { font-size:13px; font-weight:600; color:var(--accent); margin-bottom:4px; }
+  .cause-card .cause-text { font-size:12px; color:var(--text); line-height:1.5; margin-bottom:6px; }
+  .cause-card .cause-mit { font-size:11px; color:var(--text2); line-height:1.5; }
+  .cause-card .cause-mit strong { color:var(--green); }
+
+  .detail-row { display:grid; grid-template-columns:120px 1fr; gap:4px; margin-bottom:4px; font-size:12px; }
+  .detail-row .dl { color:var(--text2); text-transform:uppercase; font-size:10px; letter-spacing:.5px; }
+
+  .search-input { background:var(--surface); border:1px solid var(--border); color:var(--text); padding:8px 14px;
+    border-radius:6px; font-size:13px; outline:none; width:100%; max-width:400px; }
+  .search-input:focus { border-color:var(--accent); }
+
+  .expandable { cursor:pointer; }
+  .expandable:hover { background:rgba(79,195,247,.05); }
+  .expand-detail { display:none; background:var(--surface2); border-radius:var(--radius); padding:14px; margin:4px 12px 12px; }
+  .expand-detail.open { display:block; }
+</style>
+</head>
+<body>
+
+<div class="proto-selector">
+  <h1>SW FMEA Dashboard Prototypes</h1>
+  <span style="color:var(--border)">|</span>
+  <button class="proto-btn active" onclick="showProto(0)">1. Executive</button>
+  <button class="proto-btn" onclick="showProto(1)">2. Risk Matrix</button>
+  <button class="proto-btn" onclick="showProto(2)">3. Explorer</button>
+  <button class="proto-btn" onclick="showProto(3)">4. By Product</button>
+  <button class="proto-btn" onclick="showProto(4)">5. Common Causes</button>
+  <div style="flex:1"></div>
+  <span style="font-size:12px;color:var(--text2)">Alaris v12.6 &mdash; 171 FMEA Records</span>
+</div>
+
+<!-- ============================================================ -->
+<!-- PROTO 1: EXECUTIVE OVERVIEW                                   -->
+<!-- ============================================================ -->
+<div class="proto-page active" id="proto-0">
+  <div class="page-title">FMEA Executive Overview</div>
+  <div class="page-sub">Alaris v12.6 Embedded Software &mdash; Failure Mode & Effects Analysis Summary</div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="label">Total FMEA Records</div><div class="value" style="color:var(--accent)">171</div><div class="sub">Across 6 products</div></div>
+    <div class="kpi"><div class="label">Distinct Hazards</div><div class="value" style="color:var(--red)">38</div><div class="sub">IDE-01 through IT-06</div></div>
+    <div class="kpi"><div class="label">Failure Modes</div><div class="value" style="color:var(--orange)">86</div><div class="sub">Unique failure descriptions</div></div>
+    <div class="kpi"><div class="label">Critical Components</div><div class="value" style="color:var(--cat)">167</div><div class="sub">97.7% of records</div></div>
+    <div class="kpi"><div class="label">Risk Controls</div><div class="value" style="color:var(--green)">171</div><div class="sub">100% coverage</div></div>
+    <div class="kpi"><div class="label">Common Causes</div><div class="value" style="color:var(--purple)">26</div><div class="sub">OS + subsystem level</div></div>
+  </div>
+
+  <div class="two-col">
+    <!-- Hazard Distribution Donut -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Hazard Category Distribution</span></div>
+      <div class="card-body">
+        <div class="donut-wrap">
+          <div class="donut" style="background:conic-gradient(var(--red) 0 45.6%, var(--orange) 45.6% 66.7%, var(--yellow) 66.7% 87.1%, var(--purple) 87.1% 93.6%, var(--teal) 93.6% 96.5%, var(--cyan) 96.5% 100%)">
+            <div class="donut-center"><div class="pct">171</div><div class="lbl">Records</div></div>
+          </div>
+          <div class="legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div>IDE-01 Overinfusion<div class="legend-val">78</div></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--orange)"></div>IDE-03 Delay<div class="legend-val">36</div></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div>IDE-04 Interruption<div class="legend-val">35</div></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>IT-04 Monitoring<div class="legend-val">11</div></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div>E-07 Infection<div class="legend-val">5</div></div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>Other<div class="legend-val">6</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Product Breakdown -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Records by Product</span></div>
+      <div class="card-body" id="exec-product-bars"></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- RCM Type Distribution -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Risk Control Measure Types</span></div>
+      <div class="card-body" id="exec-rcm-bars"></div>
+    </div>
+
+    <!-- Severity Snapshot -->
+    <div class="card">
+      <div class="card-header"><span class="card-title">Residual Severity Distribution</span><span class="card-badge" style="background:rgba(102,187,106,.12);color:var(--green)">Post-Mitigation</span></div>
+      <div class="card-body">
+        <div style="display:flex;gap:8px;justify-content:center;margin-bottom:16px;">
+          <div style="text-align:center;padding:12px 20px;background:rgba(255,71,87,.08);border-radius:var(--radius);border:1px solid rgba(255,71,87,.2);min-width:100px;">
+            <div style="font-size:24px;font-weight:700;color:var(--cat)">48</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase;">Catastrophic</div>
+          </div>
+          <div style="text-align:center;padding:12px 20px;background:rgba(255,123,66,.08);border-radius:var(--radius);border:1px solid rgba(255,123,66,.2);min-width:100px;">
+            <div style="font-size:24px;font-weight:700;color:var(--crit)">32</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase;">Critical</div>
+          </div>
+          <div style="text-align:center;padding:12px 20px;background:rgba(253,216,53,.06);border-radius:var(--radius);border:1px solid rgba(253,216,53,.15);min-width:100px;">
+            <div style="font-size:24px;font-weight:700;color:var(--mod)">41</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase;">Moderate</div>
+          </div>
+          <div style="text-align:center;padding:12px 20px;background:rgba(102,187,106,.06);border-radius:var(--radius);border:1px solid rgba(102,187,106,.15);min-width:100px;">
+            <div style="font-size:24px;font-weight:700;color:var(--minor)">50</div>
+            <div style="font-size:10px;color:var(--text2);text-transform:uppercase;">Minor</div>
+          </div>
+        </div>
+        <div style="display:flex;height:16px;border-radius:4px;overflow:hidden;gap:2px;">
+          <div style="width:28%;background:var(--cat);border-radius:3px;" title="Catastrophic 28%"></div>
+          <div style="width:19%;background:var(--crit);border-radius:3px;" title="Critical 19%"></div>
+          <div style="width:24%;background:var(--mod);border-radius:3px;" title="Moderate 24%"></div>
+          <div style="width:29%;background:var(--minor);border-radius:3px;" title="Minor 29%"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PROTO 2: RISK MATRIX                                          -->
+<!-- ============================================================ -->
+<div class="proto-page" id="proto-1">
+  <div class="page-title">FMEA Risk Matrix</div>
+  <div class="page-sub">Probability of Harm vs Severity — Pre- and Post-Mitigation</div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-header"><span class="card-title">Pre-Mitigation Risk Matrix</span><span class="card-badge" style="background:rgba(255,71,87,.12);color:var(--red)">Initial Assessment</span></div>
+      <div class="card-body">
+        <div class="matrix-grid" style="grid-template-columns:100px repeat(5,1fr);">
+          <div class="matrix-header"></div>
+          <div class="matrix-header">Negligible</div><div class="matrix-header">Minor</div><div class="matrix-header">Moderate</div><div class="matrix-header">Critical</div><div class="matrix-header">Catastrophic</div>
+
+          <div class="matrix-row-label">Frequent</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.15);color:var(--mod)">2</div>
+          <div class="matrix-cell" style="background:rgba(255,170,0,.2);color:var(--major)">8</div>
+          <div class="matrix-cell" style="background:rgba(255,123,66,.25);color:var(--crit)">14</div>
+          <div class="matrix-cell" style="background:rgba(255,71,87,.3);color:var(--cat)">22</div>
+          <div class="matrix-cell" style="background:rgba(255,71,87,.4);color:var(--cat);font-size:14px;font-weight:800">31</div>
+
+          <div class="matrix-row-label">Probable</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.1);color:var(--minor)">1</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.12);color:var(--mod)">5</div>
+          <div class="matrix-cell" style="background:rgba(255,170,0,.15);color:var(--major)">9</div>
+          <div class="matrix-cell" style="background:rgba(255,123,66,.2);color:var(--crit)">16</div>
+          <div class="matrix-cell" style="background:rgba(255,71,87,.3);color:var(--cat)">24</div>
+
+          <div class="matrix-row-label">Occasional</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.08);color:var(--minor)">0</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.1);color:var(--minor)">3</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.1);color:var(--mod)">7</div>
+          <div class="matrix-cell" style="background:rgba(255,170,0,.12);color:var(--major)">11</div>
+          <div class="matrix-cell" style="background:rgba(255,123,66,.2);color:var(--crit)">18</div>
+
+          <div class="matrix-row-label">Remote</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">0</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.06);color:var(--minor)">0</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.08);color:var(--minor)">0</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.1);color:var(--minor)">0</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.08);color:var(--mod)">0</div>
+
+          <div class="matrix-row-label">Improbable</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><span class="card-title">Post-Mitigation Risk Matrix</span><span class="card-badge" style="background:rgba(102,187,106,.12);color:var(--green)">Residual Risk</span></div>
+      <div class="card-body">
+        <div class="matrix-grid" style="grid-template-columns:100px repeat(5,1fr);">
+          <div class="matrix-header"></div>
+          <div class="matrix-header">Negligible</div><div class="matrix-header">Minor</div><div class="matrix-header">Moderate</div><div class="matrix-header">Critical</div><div class="matrix-header">Catastrophic</div>
+
+          <div class="matrix-row-label">Frequent</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.06);color:var(--minor)">1</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.1);color:var(--mod)">4</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.12);color:var(--mod)">2</div>
+          <div class="matrix-cell" style="background:rgba(255,123,66,.12);color:var(--crit)">0</div>
+          <div class="matrix-cell" style="background:rgba(255,71,87,.1);color:var(--cat)">0</div>
+
+          <div class="matrix-row-label">Probable</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.06);color:var(--minor)">0</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.1);color:var(--minor)">18</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.08);color:var(--mod)">3</div>
+          <div class="matrix-cell" style="background:rgba(255,170,0,.08);color:var(--major)">0</div>
+          <div class="matrix-cell" style="background:rgba(255,71,87,.08);color:var(--cat)">0</div>
+
+          <div class="matrix-row-label">Occasional</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">0</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.06);color:var(--minor)">2</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.08);color:var(--minor)">12</div>
+          <div class="matrix-cell" style="background:rgba(253,216,53,.06);color:var(--mod)">1</div>
+          <div class="matrix-cell" style="background:rgba(255,170,0,.08);color:var(--major)">0</div>
+
+          <div class="matrix-row-label">Remote</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">0</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">8</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.06);color:var(--minor)">26</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.08);color:var(--minor)">42</div>
+          <div class="matrix-cell" style="background:rgba(102,187,106,.1);color:var(--minor)">52</div>
+
+          <div class="matrix-row-label">Improbable</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+          <div class="matrix-cell" style="background:rgba(136,153,170,.04);color:var(--neg)">&mdash;</div>
+        </div>
+        <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--green);font-weight:600;">
+          All residual risks shifted to Acceptable / ALARP regions
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Top Hazards Table -->
+  <div class="card" style="margin-top:8px;">
+    <div class="card-header"><span class="card-title">Top Risk-Scored FMEA Records</span><span class="card-badge" style="background:rgba(255,71,87,.12);color:var(--red)">Highest Pre-Mitigation Severity</span></div>
+    <div class="card-body">
+      <table>
+        <tr><th>FMEA ID</th><th>Product</th><th>Failure Mode</th><th>Hazard</th><th>Pre P1</th><th>Residual P1</th><th>Severity</th><th>RCM Type</th></tr>
+        <tr><td style="font-family:monospace;color:var(--accent)">SW-LVP-FMEA-0010</td><td>LVP</td><td>Lock up of LVP Fluid Delivery control</td><td>IDE-01 Overinfusion</td><td><span class="badge sev-cat">Frequent</span></td><td><span class="badge sev-mod">Frequent</span></td><td><span class="badge sev-cat">Catastrophic</span></td><td>Design &ndash; detect and act</td></tr>
+        <tr><td style="font-family:monospace;color:var(--accent)">SW-SYR-FMEA-0010</td><td>SYR</td><td>Lock up of SYR Fluid Delivery control</td><td>IDE-01 Overinfusion</td><td><span class="badge sev-cat">Frequent</span></td><td><span class="badge sev-mod">Frequent</span></td><td><span class="badge sev-cat">Catastrophic</span></td><td>Design &ndash; detect and act</td></tr>
+        <tr><td style="font-family:monospace;color:var(--accent)">SW-PCA-FMEA-0010</td><td>PCA</td><td>Lock up of PCA Fluid Delivery control</td><td>IDE-01 Overinfusion</td><td><span class="badge sev-cat">Frequent</span></td><td><span class="badge sev-mod">Frequent</span></td><td><span class="badge sev-cat">Catastrophic</span></td><td>Design &ndash; detect and act</td></tr>
+        <tr><td style="font-family:monospace;color:var(--accent)">SW-PCU-FMEA-0020</td><td>PCU</td><td>Lock up of PCU User Interface</td><td>IDE-04 Interruption</td><td><span class="badge sev-cat">Frequent</span></td><td><span class="badge sev-mod">Frequent</span></td><td><span class="badge sev-cat">Catastrophic</span></td><td>Design &ndash; detect and act</td></tr>
+        <tr><td style="font-family:monospace;color:var(--accent)">SW-PCU-FMEA-0040</td><td>PCU</td><td>Incorrect dosage rate calculation</td><td>IDE-01 Overinfusion</td><td><span class="badge sev-cat">Frequent</span></td><td><span class="badge sev-minor">Remote</span></td><td><span class="badge sev-cat">Catastrophic</span></td><td>Design &ndash; detect and act</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PROTO 3: FAILURE MODE EXPLORER                                -->
+<!-- ============================================================ -->
+<div class="proto-page" id="proto-2">
+  <div class="page-title">Failure Mode Explorer</div>
+  <div class="page-sub">Searchable, filterable table with expandable detail — click any row</div>
+
+  <div class="filter-bar">
+    <input class="search-input" placeholder="Search FMEA ID, failure mode, hazard, component..." />
+    <button class="filter-btn active">All (171)</button>
+    <button class="filter-btn">PCU (51)</button>
+    <button class="filter-btn">LVP (40)</button>
+    <button class="filter-btn">SYR (34)</button>
+    <button class="filter-btn">PCA (34)</button>
+    <button class="filter-btn">ETCO2 (9)</button>
+    <button class="filter-btn">AUTOID (3)</button>
+  </div>
+
+  <div class="card">
+    <div class="card-body" style="padding:0;">
+      <table>
+        <tr><th style="width:160px">FMEA ID</th><th>Product</th><th>Failure Mode</th><th>Component</th><th>Hazard</th><th>RCM Type</th><th>Severity</th></tr>
+        <tr class="expandable" onclick="toggleExpand('exp1')">
+          <td style="font-family:monospace;color:var(--accent);font-size:12px">SW-LVP-FMEA-0010</td><td>LVP</td><td>Lock up of LVP Fluid Delivery control software</td><td>Fd_lvp</td><td style="font-size:11px">IDE-01 Overinfusion</td><td style="font-size:11px">Design &ndash; detect and act</td><td><span class="badge sev-cat">Catastrophic</span></td>
+        </tr>
+        <tr><td colspan="7" style="padding:0;border:0;"><div id="exp1" class="expand-detail">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+              <div class="detail-row"><div class="dl">Source</div><div>HZD-LVP-RMF-1012, 1023, 1033</div></div>
+              <div class="detail-row"><div class="dl">Cause</div><div>SOFTWARE RUNTIME ERROR</div></div>
+              <div class="detail-row"><div class="dl">Effect</div><div>Software does not execute program as intended</div></div>
+              <div class="detail-row"><div class="dl">System Effect</div><div>Pump module software error related to LVP motor control</div></div>
+              <div class="detail-row"><div class="dl">Critical</div><div><span class="badge" style="background:rgba(255,71,87,.12);color:var(--red)">Yes</span></div></div>
+            </div>
+            <div>
+              <div class="detail-row"><div class="dl">RCM</div><div>MODULE SOFTWARE FAULT HANDLING</div></div>
+              <div class="detail-row"><div class="dl">Requirement</div><div style="font-size:11px">SRD-9790: Module shall generate HIGH PRIORITY ALARM and halt infusions on CHANNEL ERROR</div></div>
+              <div class="detail-row"><div class="dl">Evidence</div><div>Refer to RTM</div></div>
+              <div class="detail-row"><div class="dl">Standard</div><div>IEC 62304 Sec. B.4</div></div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding:10px;background:rgba(102,187,106,.06);border:1px solid rgba(102,187,106,.15);border-radius:6px;font-size:12px;line-height:1.6;color:var(--text2);">
+            <strong style="color:var(--green)">Mitigation:</strong> MODULE SOFTWARE FAULT HANDLING detects the lockup and triggers a high priority visual alarm and stops the module. PCU detects unresponsive module and triggers high priority visual + audio alarm. Over/under-infusion prevented as infusion stopped + user notified immediately.
+          </div>
+        </div></td></tr>
+
+        <tr class="expandable" onclick="toggleExpand('exp2')">
+          <td style="font-family:monospace;color:var(--accent);font-size:12px">SW-PCU-FMEA-0040</td><td>PCU</td><td>Incorrect dosage rate calculation</td><td>ProgMgmt</td><td style="font-size:11px">IDE-01 Overinfusion</td><td style="font-size:11px">Design &ndash; detect and act</td><td><span class="badge sev-cat">Catastrophic</span></td>
+        </tr>
+        <tr><td colspan="7" style="padding:0;border:0;"><div id="exp2" class="expand-detail">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+              <div class="detail-row"><div class="dl">Cause</div><div>SOFTWARE LOGIC ERROR</div></div>
+              <div class="detail-row"><div class="dl">Effect</div><div>System calculates incorrect rate for infusion</div></div>
+              <div class="detail-row"><div class="dl">Critical</div><div><span class="badge" style="background:rgba(255,71,87,.12);color:var(--red)">Yes</span></div></div>
+            </div>
+            <div>
+              <div class="detail-row"><div class="dl">RCM</div><div>DOSAGE CALCULATION VERIFICATION</div></div>
+              <div class="detail-row"><div class="dl">Residual P1</div><div><span class="badge sev-minor">Remote</span></div></div>
+            </div>
+          </div>
+        </div></td></tr>
+
+        <tr class="expandable" onclick="toggleExpand('exp3')">
+          <td style="font-family:monospace;color:var(--accent);font-size:12px">SW-PCU-FMEA-0080</td><td>PCU</td><td>Incorrect drug library limits enforcement</td><td>DrugLib</td><td style="font-size:11px">IDE-01 Overinfusion</td><td style="font-size:11px">Design &ndash; detect and act</td><td><span class="badge sev-crit">Critical</span></td>
+        </tr>
+        <tr><td colspan="7" style="padding:0;border:0;"><div id="exp3" class="expand-detail">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+            <div>
+              <div class="detail-row"><div class="dl">Cause</div><div>SOFTWARE LOGIC ERROR in drug library enforcement</div></div>
+              <div class="detail-row"><div class="dl">Effect</div><div>Limits not properly enforced, overdose possible</div></div>
+            </div>
+            <div>
+              <div class="detail-row"><div class="dl">RCM</div><div>DRUG LIBRARY VALIDATION + HARD/SOFT LIMIT ENFORCEMENT</div></div>
+              <div class="detail-row"><div class="dl">Residual P1</div><div><span class="badge sev-minor">Remote</span></div></div>
+            </div>
+          </div>
+        </div></td></tr>
+
+        <tr><td style="font-family:monospace;color:var(--accent);font-size:12px">SW-SYR-FMEA-0010</td><td>SYR</td><td>Lock up of SYR Fluid Delivery control software</td><td>Fd_syr</td><td style="font-size:11px">IDE-01 Overinfusion</td><td style="font-size:11px">Design &ndash; detect and act</td><td><span class="badge sev-cat">Catastrophic</span></td></tr>
+        <tr><td style="font-family:monospace;color:var(--accent);font-size:12px">SW-PCA-FMEA-0010</td><td>PCA</td><td>Lock up of PCA Fluid Delivery control software</td><td>Fd_syr</td><td style="font-size:11px">IDE-01 Overinfusion</td><td style="font-size:11px">Design &ndash; detect and act</td><td><span class="badge sev-cat">Catastrophic</span></td></tr>
+        <tr><td style="font-family:monospace;color:var(--accent);font-size:12px">SW-LVP-FMEA-0020</td><td>LVP</td><td>Incorrect motor step count computation</td><td>Fd_lvp</td><td style="font-size:11px">IDE-01 Overinfusion</td><td style="font-size:11px">Design &ndash; detect and act</td><td><span class="badge sev-cat">Catastrophic</span></td></tr>
+        <tr><td colspan="7" style="text-align:center;color:var(--text2);padding:16px;font-size:12px">... 165 more records. Full table with pagination in React implementation.</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PROTO 4: BY PRODUCT                                           -->
+<!-- ============================================================ -->
+<div class="proto-page" id="proto-3">
+  <div class="page-title">FMEA by Product</div>
+  <div class="page-sub">Per-product breakdown of failure modes, hazard distribution, and risk control coverage</div>
+
+  <div class="three-col" id="product-cards"></div>
+
+  <div class="card" style="margin-top:8px;">
+    <div class="card-header"><span class="card-title">Cross-Product Hazard Heatmap</span></div>
+    <div class="card-body">
+      <div class="matrix-grid" style="grid-template-columns:140px repeat(6,1fr);">
+        <div class="matrix-header"></div>
+        <div class="matrix-header">PCU</div><div class="matrix-header">LVP</div><div class="matrix-header">SYR</div><div class="matrix-header">PCA</div><div class="matrix-header">ETCO2</div><div class="matrix-header">AUTOID</div>
+
+        <div class="matrix-row-label">IDE-01 Overinfusion</div>
+        <div class="matrix-cell" style="background:rgba(255,71,87,.3);color:var(--cat)">18</div>
+        <div class="matrix-cell" style="background:rgba(255,71,87,.35);color:var(--cat)">22</div>
+        <div class="matrix-cell" style="background:rgba(255,71,87,.25);color:var(--cat)">16</div>
+        <div class="matrix-cell" style="background:rgba(255,71,87,.25);color:var(--cat)">16</div>
+        <div class="matrix-cell" style="background:rgba(255,71,87,.12);color:var(--cat)">4</div>
+        <div class="matrix-cell" style="background:rgba(255,71,87,.08);color:var(--cat)">2</div>
+
+        <div class="matrix-row-label">IDE-03 Delay</div>
+        <div class="matrix-cell" style="background:rgba(255,170,0,.2);color:var(--major)">12</div>
+        <div class="matrix-cell" style="background:rgba(255,170,0,.15);color:var(--major)">8</div>
+        <div class="matrix-cell" style="background:rgba(255,170,0,.12);color:var(--major)">7</div>
+        <div class="matrix-cell" style="background:rgba(255,170,0,.12);color:var(--major)">7</div>
+        <div class="matrix-cell" style="background:rgba(255,170,0,.06);color:var(--major)">2</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+
+        <div class="matrix-row-label">IDE-04 Interruption</div>
+        <div class="matrix-cell" style="background:rgba(253,216,53,.2);color:var(--mod)">14</div>
+        <div class="matrix-cell" style="background:rgba(253,216,53,.15);color:var(--mod)">7</div>
+        <div class="matrix-cell" style="background:rgba(253,216,53,.12);color:var(--mod)">8</div>
+        <div class="matrix-cell" style="background:rgba(253,216,53,.1);color:var(--mod)">6</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+
+        <div class="matrix-row-label">IT-04 Monitoring</div>
+        <div class="matrix-cell" style="background:rgba(171,71,188,.15);color:var(--purple)">5</div>
+        <div class="matrix-cell" style="background:rgba(171,71,188,.08);color:var(--purple)">2</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+        <div class="matrix-cell" style="background:rgba(171,71,188,.12);color:var(--purple)">3</div>
+        <div class="matrix-cell" style="background:rgba(171,71,188,.06);color:var(--purple)">1</div>
+
+        <div class="matrix-row-label">Other</div>
+        <div class="matrix-cell" style="background:rgba(38,166,154,.08);color:var(--teal)">2</div>
+        <div class="matrix-cell" style="background:rgba(38,166,154,.06);color:var(--teal)">1</div>
+        <div class="matrix-cell" style="background:rgba(38,166,154,.08);color:var(--teal)">3</div>
+        <div class="matrix-cell" style="background:rgba(38,166,154,.08);color:var(--teal)">5</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+        <div class="matrix-cell" style="background:rgba(136,153,170,.06);color:var(--neg)">&mdash;</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- PROTO 5: COMMON CAUSES                                        -->
+<!-- ============================================================ -->
+<div class="proto-page" id="proto-4">
+  <div class="page-title">Common Cause Analysis</div>
+  <div class="page-sub">OS-level and subsystem-level failure modes with mitigations — 26 identified common causes</div>
+
+  <div class="kpi-row" style="grid-template-columns:repeat(4,1fr);">
+    <div class="kpi"><div class="label">Common Causes</div><div class="value" style="color:var(--purple)">26</div><div class="sub">Across OS + application</div></div>
+    <div class="kpi"><div class="label">OS-Level</div><div class="value" style="color:var(--orange)">14</div><div class="sub">OSE + SMX kernel</div></div>
+    <div class="kpi"><div class="label">Subsystem</div><div class="value" style="color:var(--teal)">8</div><div class="sub">STL, containers, algorithms</div></div>
+    <div class="kpi"><div class="label">Application</div><div class="value" style="color:var(--accent)">4</div><div class="sub">Cross-module shared code</div></div>
+  </div>
+
+  <div class="two-col">
+    <div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">OS Kernel &mdash; OSE (Modules: LVP, SYR, PCA, ETCO2)</span></div>
+        <div class="card-body">
+          <div class="cause-card">
+            <div class="cause-module">OSE Scheduling</div>
+            <div class="cause-text">Task starvation &mdash; a lower-priority task never executes because higher-priority tasks monopolize CPU</div>
+            <div class="cause-mit"><strong>Mitigation:</strong> Software watchdog monitors critical tasks; hardware watchdog resets module on timeout. Bounded execution + priority ceiling protocol prevents priority inversion.</div>
+          </div>
+          <div class="cause-card">
+            <div class="cause-module">OSE Memory Management</div>
+            <div class="cause-text">Memory leak or corruption &mdash; dynamic allocation fails or overwrites adjacent memory</div>
+            <div class="cause-mit"><strong>Mitigation:</strong> Static memory allocation at init; no runtime malloc. Memory protection units isolate task address spaces. CRC on critical data structures.</div>
+          </div>
+          <div class="cause-card">
+            <div class="cause-module">OSE Interrupt Management</div>
+            <div class="cause-text">Interrupt storm or lost interrupt &mdash; hardware interrupt handler takes too long or drops events</div>
+            <div class="cause-mit"><strong>Mitigation:</strong> Interrupt handlers are minimal (deferred processing). Watchdog detects stalled interrupt context. Nested interrupt priority scheme with bounded latency.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-header"><span class="card-title">OS Kernel &mdash; SMX (PCU)</span></div>
+        <div class="card-body">
+          <div class="cause-card">
+            <div class="cause-module">SMX Scheduling</div>
+            <div class="cause-text">Priority inversion or task deadlock in PCU real-time scheduler</div>
+            <div class="cause-mit"><strong>Mitigation:</strong> Priority inheritance protocol; deadlock detection via watchdog. Critical sections bounded to &lt; 100&mu;s.</div>
+          </div>
+          <div class="cause-card">
+            <div class="cause-module">SMX Messaging</div>
+            <div class="cause-text">Message queue overflow or corruption in inter-task communication</div>
+            <div class="cause-mit"><strong>Mitigation:</strong> Bounded message queues with overflow detection. CRC on message payloads. Fallback to safe state on queue corruption.</div>
+          </div>
+          <div class="cause-card">
+            <div class="cause-module">SMX System Clock</div>
+            <div class="cause-text">Timer drift or failure &mdash; system tick counter wraps or stops</div>
+            <div class="cause-mit"><strong>Mitigation:</strong> Dual clock sources with cross-check. Hardware watchdog independent of system clock. Timer wrap-safe arithmetic in all time calculations.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">Application-Level Common Causes</span><span class="card-badge" style="background:rgba(79,195,247,.12);color:var(--accent)">Cross-Module</span></div>
+    <div class="card-body">
+      <table>
+        <tr><th>Scope</th><th>Common Cause</th><th>Mitigation Summary</th><th>Modules Affected</th></tr>
+        <tr><td>PCU, LVP, SYR, PCA, ETCO2</td><td>Shared communication protocol failure between PCU and modules</td><td>Heartbeat monitoring, MODULE INDEPENDENCE ensures modules continue infusing on comm loss</td><td><span class="badge" style="background:rgba(79,195,247,.1);color:var(--accent)">All 5</span></td></tr>
+        <tr><td>PCU, LVP, SYR, PCA, ETCO2</td><td>Shared drug library data corruption or mismatch</td><td>CRC verification on drug library data; version matching at module attach; fallback to hard limits</td><td><span class="badge" style="background:rgba(79,195,247,.1);color:var(--accent)">All 5</span></td></tr>
+        <tr><td>PCU, LVP, SYR, PCA, ETCO2</td><td>Shared alarm management failure &mdash; alarm suppression or lost notification</td><td>Independent alarm subsystem per module; alarm queue with overflow detection; visual + audio + remote notification redundancy</td><td><span class="badge" style="background:rgba(79,195,247,.1);color:var(--accent)">All 5</span></td></tr>
+        <tr><td>STL Containers/Iterators</td><td>C++ STL container corruption (vector, map, string)</td><td>Bounded container sizes; no dynamic allocation after init; iterator validity checks; defensive coding standards</td><td><span class="badge" style="background:rgba(171,71,188,.1);color:var(--purple)">PCU</span></td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+// Proto page switching
+function showProto(idx) {
+  document.querySelectorAll('.proto-page').forEach((p,i) => p.classList.toggle('active', i===idx));
+  document.querySelectorAll('.proto-btn').forEach((b,i) => b.classList.toggle('active', i===idx));
+}
+
+// Expandable rows
+function toggleExpand(id) {
+  document.getElementById(id).classList.toggle('open');
+}
+
+// Build product bars (Proto 1)
+const products = [{name:'PCU',val:51,col:'var(--accent)'},{name:'LVP',val:40,col:'var(--green)'},{name:'SYR',val:34,col:'var(--orange)'},{name:'PCA',val:34,col:'var(--yellow)'},{name:'ETCO2',val:9,col:'var(--purple)'},{name:'AUTOID',val:3,col:'var(--teal)'}];
+const pbDiv = document.getElementById('exec-product-bars');
+products.forEach(p => {
+  const pct = Math.round(p.val / 51 * 100);
+  pbDiv.innerHTML += `<div class="bar-row"><div class="bar-label">${p.name}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${p.col}">${p.val}</div></div></div>`;
+});
+
+// RCM bars (Proto 1)
+const rcms = [
+  {name:'Detect and act',val:145,col:'var(--accent)'},{name:'Inherent fail-safe',val:12,col:'var(--green)'},
+  {name:'Visual/audible indicators',val:6,col:'var(--orange)'},{name:'Process control',val:3,col:'var(--yellow)'},
+  {name:'Labeling/DFU',val:2,col:'var(--purple)'},{name:'Eliminate hazard',val:2,col:'var(--teal)'},
+  {name:'Detect and recover',val:1,col:'var(--pink)'}
+];
+const rcmDiv = document.getElementById('exec-rcm-bars');
+rcms.forEach(r => {
+  const pct = Math.round(r.val / 145 * 100);
+  rcmDiv.innerHTML += `<div class="bar-row"><div class="bar-label">${r.name}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${r.col}">${r.val}</div></div></div>`;
+});
+
+// Product cards (Proto 4)
+const pcDiv = document.getElementById('product-cards');
+const prodDetails = [
+  {name:'PCU',count:51,col:'#4fc3f7',fm:24,crit:49,hazards:'IDE-01, IDE-03, IDE-04, IT-04',bars:[35,28,27,10]},
+  {name:'LVP',count:40,col:'#66bb6a',fm:18,crit:40,hazards:'IDE-01, IDE-03, IDE-04',bars:[55,20,18,7]},
+  {name:'SYR',count:34,col:'#ffa726',fm:16,crit:34,hazards:'IDE-01, IDE-03, IDE-04',bars:[47,21,24,8]},
+  {name:'PCA',count:34,col:'#fdd835',fm:16,crit:34,hazards:'IDE-01, IDE-03, IDE-04',bars:[47,21,18,14]},
+  {name:'ETCO2',count:9,col:'#ab47bc',fm:7,crit:9,hazards:'IDE-01, IT-04',bars:[44,22,0,34]},
+  {name:'AUTOID',count:3,col:'#26a69a',fm:3,crit:0,hazards:'IDE-01, IT-04',bars:[67,0,0,33]},
+];
+prodDetails.forEach(p => {
+  pcDiv.innerHTML += `<div class="product-card">
+    <div class="prod-header">
+      <div class="prod-icon" style="background:${p.col}">${p.name}</div>
+      <div>
+        <div class="prod-name">${p.name}</div>
+        <div class="prod-count">${p.count} FMEA records</div>
+      </div>
+    </div>
+    <div style="display:flex;gap:16px;margin-bottom:8px;">
+      <div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Failure Modes</div><div style="font-size:18px;font-weight:700">${p.fm}</div></div>
+      <div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">Critical</div><div style="font-size:18px;font-weight:700;color:var(--red)">${p.crit}</div></div>
+      <div><div style="font-size:9px;color:var(--text2);text-transform:uppercase">RCMs</div><div style="font-size:18px;font-weight:700;color:var(--green)">${p.count}</div></div>
+    </div>
+    <div style="font-size:11px;color:var(--text2);margin-bottom:6px;">Hazards: ${p.hazards}</div>
+    <div class="mini-bar">
+      <div style="width:${p.bars[0]}%;background:var(--red);" title="Overinfusion"></div>
+      <div style="width:${p.bars[1]}%;background:var(--orange);" title="Delay"></div>
+      <div style="width:${p.bars[2]}%;background:var(--yellow);" title="Interruption"></div>
+      <div style="width:${p.bars[3]}%;background:var(--purple);" title="Other"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text2);margin-top:3px;"><span>Overinfusion</span><span>Delay</span><span>Int.</span><span>Other</span></div>
+  </div>`;
+});
+</script>
+</body>
+</html>

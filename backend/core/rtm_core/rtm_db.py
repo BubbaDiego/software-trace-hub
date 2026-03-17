@@ -242,6 +242,80 @@ CREATE INDEX IF NOT EXISTS idx_sta_ver_req ON rtm_sta_version_verification(requi
 CREATE INDEX IF NOT EXISTS idx_sta_ver_version ON rtm_sta_version_verification(version_label);
 CREATE INDEX IF NOT EXISTS idx_sta_ver_srd ON rtm_sta_version_verification(srd_id);
 
+-- FMEA tables
+CREATE TABLE IF NOT EXISTS fmea_records (
+    id                          INTEGER PRIMARY KEY AUTOINCREMENT,
+    fmea_id                     TEXT NOT NULL DEFAULT '',
+    source                      TEXT NOT NULL DEFAULT '',
+    hazard                      TEXT NOT NULL DEFAULT '',
+    hazardous_situation         TEXT NOT NULL DEFAULT '',
+    product                     TEXT NOT NULL DEFAULT '',
+    system                      TEXT NOT NULL DEFAULT '',
+    component                   TEXT NOT NULL DEFAULT '',
+    critical_component          TEXT NOT NULL DEFAULT '',
+    function                    TEXT NOT NULL DEFAULT '',
+    failure_mode                TEXT NOT NULL DEFAULT '',
+    failure_code                TEXT NOT NULL DEFAULT '',
+    failure_code_desc           TEXT NOT NULL DEFAULT '',
+    cause                       TEXT NOT NULL DEFAULT '',
+    effect                      TEXT NOT NULL DEFAULT '',
+    system_effect               TEXT NOT NULL DEFAULT '',
+    rcm                         TEXT NOT NULL DEFAULT '',
+    rcm_type                    TEXT NOT NULL DEFAULT '',
+    requirement                 TEXT NOT NULL DEFAULT '',
+    ui_spec                     TEXT NOT NULL DEFAULT '',
+    evidence                    TEXT NOT NULL DEFAULT '',
+    standard_ref                TEXT NOT NULL DEFAULT '',
+    p1a                         TEXT NOT NULL DEFAULT '',
+    p1b_p1c                     TEXT NOT NULL DEFAULT '',
+    p1_sources                  TEXT NOT NULL DEFAULT '',
+    p1                          TEXT NOT NULL DEFAULT '',
+    poh                         TEXT NOT NULL DEFAULT '',
+    mitigation_rationale        TEXT NOT NULL DEFAULT '',
+    residual_p1a                TEXT NOT NULL DEFAULT '',
+    residual_p1b_p1c            TEXT NOT NULL DEFAULT '',
+    residual_p1_sources         TEXT NOT NULL DEFAULT '',
+    residual_p1                 TEXT NOT NULL DEFAULT '',
+    residual_hazardous_situation TEXT NOT NULL DEFAULT '',
+    severity                    TEXT NOT NULL DEFAULT '',
+    residual_poh                TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_fmea_id ON fmea_records(fmea_id);
+CREATE INDEX IF NOT EXISTS idx_fmea_hazard ON fmea_records(hazard);
+
+CREATE TABLE IF NOT EXISTS fmea_common_causes (
+    id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+    module                TEXT NOT NULL DEFAULT '',
+    common_cause          TEXT NOT NULL DEFAULT '',
+    common_cause_failure  TEXT NOT NULL DEFAULT '',
+    mitigation            TEXT NOT NULL DEFAULT '',
+    reference             TEXT NOT NULL DEFAULT ''
+);
+
+-- Resource planning tables
+CREATE TABLE IF NOT EXISTS resource_people (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL DEFAULT '',
+    type        TEXT NOT NULL DEFAULT 'FTE',
+    team        TEXT NOT NULL DEFAULT '',
+    location    TEXT NOT NULL DEFAULT '',
+    manager     TEXT NOT NULL DEFAULT '',
+    project     TEXT NOT NULL DEFAULT '',
+    activity    TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS idx_res_people_name ON resource_people(name);
+CREATE INDEX IF NOT EXISTS idx_res_people_team ON resource_people(team);
+
+CREATE TABLE IF NOT EXISTS resource_allocations (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    person_name  TEXT NOT NULL DEFAULT '',
+    project      TEXT NOT NULL DEFAULT '',
+    month        TEXT NOT NULL DEFAULT '',
+    allocation   REAL NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_res_alloc_name ON resource_allocations(person_name);
+CREATE INDEX IF NOT EXISTS idx_res_alloc_month ON resource_allocations(month);
+
 CREATE TABLE IF NOT EXISTS rtm_snapshots (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id      INTEGER NOT NULL,

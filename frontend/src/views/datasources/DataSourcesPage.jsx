@@ -27,6 +27,10 @@ import {
   importStaFile,
   importBundledSta,
   useRtmStaSummary,
+  importFmeaFile,
+  useFmeaSummary,
+  importResourceFile,
+  useResourceSummary,
 } from 'api/rtm';
 
 // ---------------------------------------------------------------------------
@@ -66,7 +70,6 @@ const SOURCES = [
     accept: '.xlsx,.xls,.xlsm',
     description: 'Upload the Software FMEA workbook containing failure modes, severity, occurrence, detection, and RPN scores.',
     hasBundled: false,
-    comingSoon: true,
   },
   {
     id: 'resources',
@@ -77,7 +80,6 @@ const SOURCES = [
     accept: '.xlsx,.xls,.xlsm',
     description: 'Upload the resource planning workbook with team allocations, project assignments, and FTE data.',
     hasBundled: false,
-    comingSoon: true,
   },
 ];
 
@@ -226,6 +228,8 @@ export default function DataSourcesPage() {
   const { projects, projectsLoading } = useRtmProjects();
   const activeProject = projects?.[0];
   const { staSummary } = useRtmStaSummary(activeProject?.id);
+  const { fmeaSummary, refreshFmea } = useFmeaSummary();
+  const { resourceSummary, refreshResources } = useResourceSummary();
 
   const [loading, setLoading] = useState({});
   const [results, setResults] = useState({});
@@ -246,8 +250,14 @@ export default function DataSourcesPage() {
         } else if (id === 'sta') {
           const res = await importStaFile(activeProject.id, file);
           setResult('sta', `Enriched ${res.sw_trace?.matched ?? 0} SRDs with traceability data`);
-        } else {
-          setResult(id, 'Upload accepted (backend processing coming soon)');
+        } else if (id === 'fmea') {
+          const res = await importFmeaFile(file);
+          setResult('fmea', `Imported ${res.fmea_records ?? 0} FMEA records, ${res.common_causes ?? 0} common causes`);
+          refreshFmea();
+        } else if (id === 'resources') {
+          const res = await importResourceFile(file);
+          setResult('resources', `Imported ${res.people_imported ?? 0} people, ${res.allocation_rows?.toLocaleString() ?? 0} allocation rows`);
+          refreshResources();
         }
       } catch (err) {
         setResult(id, err?.response?.data?.detail || err.message || 'Upload failed', true);
@@ -287,8 +297,12 @@ export default function DataSourcesPage() {
     sta: staSummary?.srs_count > 0
       ? { imported: true, count: staSummary.srs_count, label: 'STA Enrichment', rtmReady: !!activeProject }
       : { imported: false, rtmReady: !!activeProject },
-    fmea: { imported: false },
-    resources: { imported: false },
+    fmea: fmeaSummary?.imported
+      ? { imported: true, count: fmeaSummary.fmea_records, label: `${fmeaSummary.common_causes} common causes` }
+      : { imported: false },
+    resources: resourceSummary?.imported
+      ? { imported: true, count: resourceSummary.people_count, label: `${resourceSummary.allocation_rows?.toLocaleString()} allocations` }
+      : { imported: false },
   };
 
   return (

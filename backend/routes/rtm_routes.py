@@ -398,3 +398,90 @@ async def export_project(
         media_type="text/csv",
         headers={"Content-Disposition": f"attachment; filename=rtm_project_{project_id}.csv"},
     )
+
+
+# ── FMEA Import ───────────────────────────────────────────────────
+
+@router.post("/fmea/import")
+async def import_fmea(file: UploadFile = File(...)):
+    """Upload and import a Software FMEA Excel file."""
+    if not file.filename or not file.filename.endswith((".xlsx", ".xls", ".xlsm")):
+        raise HTTPException(400, "File must be .xlsx, .xls, or .xlsm")
+
+    tmp_dir = tempfile.mkdtemp(prefix="fmea_upload_")
+    tmp_path = os.path.join(tmp_dir, file.filename)
+    try:
+        with open(tmp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        return _rtm().import_fmea(tmp_path)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"FMEA import failed: {e}")
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@router.get("/fmea/summary")
+async def get_fmea_summary():
+    """Get FMEA import summary."""
+    return _rtm().get_fmea_summary()
+
+
+@router.get("/fmea/overview")
+async def get_fmea_overview():
+    """Get FMEA executive overview with breakdowns."""
+    return _rtm().get_fmea_overview()
+
+
+@router.get("/fmea/records")
+async def get_fmea_records(
+    product: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    """Query FMEA records with optional product filter and search."""
+    return _rtm().get_fmea_records(product=product, search=search, limit=limit, offset=offset)
+
+
+@router.get("/fmea/common-causes")
+async def get_fmea_common_causes():
+    """Get all FMEA common causes."""
+    return _rtm().get_fmea_common_causes()
+
+
+@router.get("/fmea/product-matrix")
+async def get_fmea_product_matrix():
+    """Get cross-product hazard matrix data."""
+    return _rtm().get_fmea_product_matrix()
+
+
+# ── Resource Import ───────────────────────────────────────────────
+
+@router.post("/resources/import")
+async def import_resources(file: UploadFile = File(...)):
+    """Upload and import a resource planning Excel file."""
+    if not file.filename or not file.filename.endswith((".xlsx", ".xls", ".xlsm")):
+        raise HTTPException(400, "File must be .xlsx, .xls, or .xlsm")
+
+    tmp_dir = tempfile.mkdtemp(prefix="res_upload_")
+    tmp_path = os.path.join(tmp_dir, file.filename)
+    try:
+        with open(tmp_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        return _rtm().import_resources(tmp_path)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:
+        raise HTTPException(500, f"Resource import failed: {e}")
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
+@router.get("/resources/summary")
+async def get_resource_summary():
+    """Get resource import summary."""
+    return _rtm().get_resource_summary()
