@@ -14,7 +14,7 @@ app = FastAPI(title="Software Trace Hub", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001", "*"],
+    allow_origins=["http://localhost:3001", "http://127.0.0.1:3001", "http://localhost:5001", "*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -38,4 +38,4 @@ if os.path.isdir(_DIST):
 
 
 if __name__ == "__main__":
-    uvicorn.run("app:app", host="0.0.0.0", port=5000, reload=True)
+    uvicorn.run("app:app", host="0.0.0.0", port=5001, reload=True)

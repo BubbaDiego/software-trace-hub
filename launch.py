@@ -3,6 +3,7 @@ import subprocess
 import sys
 import os
 import time
+import webbrowser
 
 BANNER = r"""
   ╔═══════════════════════════════════════════════════╗
@@ -35,7 +36,7 @@ if sys.prefix == sys.base_prefix:  # not in a venv
 
 def menu():
     print(BANNER)
-    print("  [1]  Start Backend          (FastAPI :5000)")
+    print("  [1]  Start Backend          (FastAPI :5001)")
     print("  [2]  Start Frontend         (Vite :3001)")
     print("  [3]  Start Both")
     print("  [4]  Build Frontend         (production dist)")
@@ -45,7 +46,7 @@ def menu():
 
 
 def start_backend():
-    print("\n  Starting backend on http://localhost:5000 ...")
+    print("\n  Starting backend on http://localhost:5001 ...")
     env = os.environ.copy()
     env["PYTHONPATH"] = BACKEND
     kwargs = {}
@@ -100,11 +101,15 @@ def main():
 
             if choice == "1":
                 procs.append(start_backend())
+                time.sleep(1)
+                webbrowser.open("http://localhost:5001")
                 print("  Backend running. Press Enter to return to menu.")
                 input()
 
             elif choice == "2":
                 procs.append(start_frontend())
+                time.sleep(2)
+                webbrowser.open("http://localhost:3001")
                 print("  Frontend running. Press Enter to return to menu.")
                 input()
 
@@ -112,8 +117,10 @@ def main():
                 procs.append(start_backend())
                 time.sleep(1)
                 procs.append(start_frontend())
+                time.sleep(2)
+                webbrowser.open("http://localhost:3001")
                 print("\n  Both running:")
-                print("    Backend  → http://localhost:5000")
+                print("    Backend  → http://localhost:5001")
                 print("    Frontend → http://localhost:3001")
                 print("\n  Press Enter to return to menu.")
                 input()

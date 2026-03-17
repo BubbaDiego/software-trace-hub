@@ -7,7 +7,7 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import { IconClipboardList, IconShieldCheck, IconAlertTriangle } from '@tabler/icons-react';
+import { IconClipboardList, IconShieldCheck, IconAlertTriangle, IconUsers, IconDatabaseImport } from '@tabler/icons-react';
 
 const DRAWER_WIDTH = 240;
 
@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { path: '/rtm', label: 'RTM Tracker', icon: IconClipboardList, color: 'primary.main' },
   { path: '/iec62304', label: 'IEC 62304', icon: IconShieldCheck, color: 'success.main' },
   { path: '/iso14971', label: 'ISO 14971', icon: IconAlertTriangle, color: 'warning.main' },
+  { path: '/resources', label: 'Resources', icon: IconUsers, color: 'info.main' },
+  { path: '/data-sources', label: 'Data Sources', icon: IconDatabaseImport, color: 'secondary.main' },
 ];
 
 export default function AppLayout() {
@@ -38,10 +40,15 @@ export default function AppLayout() {
         }}
       >
         <Box sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <IconClipboardList size={28} />
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>
-            Trace Hub
-          </Typography>
+          <IconClipboardList size={28} color="#4678d8" />
+          <Box>
+            <Typography variant="h6" sx={{ fontWeight: 700, lineHeight: 1.2, letterSpacing: '-0.3px' }}>
+              Trace Hub
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
+              RTM · IEC 62304 · ISO 14971
+            </Typography>
+          </Box>
         </Box>
         <Divider />
         <List sx={{ px: 1, pt: 1 }}>
@@ -76,7 +83,7 @@ export default function AppLayout() {
           })}
         </List>
       </Drawer>
-      <Box component="main" sx={{ flex: 1, p: 2, overflow: 'auto' }}>
+      <Box component="main" sx={{ flex: 1, p: '28px 32px', overflow: 'auto', maxWidth: 1600, mx: 'auto' }}>
         <Outlet />
       </Box>
     </Box>
