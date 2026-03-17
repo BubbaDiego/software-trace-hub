@@ -18,6 +18,7 @@ export default defineConfig({
       utils: r('utils'),
       api: r('api'),
       views: r('views'),
+      components: r('components'),
       '@tabler/icons-react': '@tabler/icons-react/dist/esm/icons/index.mjs'
     }
   },
