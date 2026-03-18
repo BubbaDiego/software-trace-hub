@@ -247,7 +247,7 @@ class RTMCore:
                                                    "modules": sta_modules, "ref_type": ref_type}})
                             edges.append({"source": f"req-{rid}", "target": sid})
 
-        # Design outputs
+        # Design outputs — enriched with SWDD document content
         designs = self._db.fetchall(
             "SELECT * FROM rtm_sta_design_outputs WHERE requirement_id = ?", (rid,))
         for d in designs:
@@ -257,8 +257,32 @@ class RTMCore:
             ut_files = json.loads(d.get("unit_test_files_json") or "[]")
             for i, dr in enumerate(drefs[:5]):
                 did = f"design-{rid}-{i}"
-                nodes.append({"id": did, "type": "design", "label": str(dr)[:40], "sub": "SDD Section",
-                              "data": {"design_ref": str(dr), "all_refs": drefs}})
+                design_data = {"design_ref": str(dr), "all_refs": drefs}
+
+                # Look up SWDD item for this ASDD ref
+                asdd_key = str(dr).replace("ASDD-", "")
+                swdd_item = self._db.fetchone(
+                    "SELECT name, description, assumptions, risks, test_areas, unit_count "
+                    "FROM swdd_items WHERE asdd_ref = ? LIMIT 1",
+                    (asdd_key,),
+                )
+                if swdd_item:
+                    design_data["swdd_name"] = swdd_item["name"]
+                    design_data["swdd_description"] = swdd_item["description"]
+                    design_data["swdd_assumptions"] = swdd_item["assumptions"]
+                    design_data["swdd_risks"] = swdd_item["risks"]
+                    design_data["swdd_test_areas"] = swdd_item["test_areas"]
+                    design_data["swdd_unit_count"] = swdd_item["unit_count"]
+                    # Get unit names
+                    swdd_units = self._db.fetchall(
+                        "SELECT name FROM swdd_units WHERE asdd_ref = ? ORDER BY name",
+                        (asdd_key,),
+                    )
+                    design_data["swdd_units"] = [u["name"] for u in swdd_units]
+
+                nodes.append({"id": did, "type": "design", "label": str(dr)[:40],
+                              "sub": swdd_item["name"] if swdd_item else "SDD Section",
+                              "data": design_data})
                 edges.append({"source": f"req-{rid}", "target": did})
 
             ut_count = d.get("unit_test_count", 0)
