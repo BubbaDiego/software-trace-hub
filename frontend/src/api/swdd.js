@@ -70,3 +70,12 @@ export async function importSwddFile(file) {
   mutate(EP.crossRefs);
   return res.data;
 }
+
+export async function importBundledSwdd() {
+  const res = await axiosServices.post('/api/swdd/import-bundled');
+  mutate(EP.summary);
+  mutate(EP.overview);
+  mutate(EP.architecture);
+  mutate(EP.crossRefs);
+  return res.data;
+}

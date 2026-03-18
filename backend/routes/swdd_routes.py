@@ -38,6 +38,22 @@ async def import_swdd(file: UploadFile = File(...)):
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+@router.post("/import-bundled")
+async def import_bundled_swdd():
+    """Import the bundled SW Detailed Design .docx file."""
+    bundled = os.path.join(
+        os.path.dirname(__file__), "..", "..", "sources",
+        "15.0 SW Detailed Design v00.docx"
+    )
+    bundled = os.path.normpath(bundled)
+    if not os.path.isfile(bundled):
+        raise HTTPException(404, f"Bundled SWDD file not found at: {bundled}")
+    try:
+        return _swdd().import_swdd(bundled)
+    except Exception as e:
+        raise HTTPException(500, f"SWDD import failed: {e}")
+
+
 @router.get("/summary")
 async def get_summary():
     return _swdd().get_summary()

@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import Box from '@mui/material/Box';
+import PageTitle from 'components/PageTitle';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
@@ -18,12 +19,14 @@ import {
   IconDatabase,
   IconCheck,
   IconX,
+  IconSitemap,
 } from '@tabler/icons-react';
 
 import { useRtmProjects, importRtmFile, importBundledRtm } from 'api/rtm';
 import { importStaFile, importBundledSta, useStaSummary } from 'api/sta';
 import { importFmeaFile, useFmeaSummary } from 'api/fmea';
 import { importResourceFile, useResourceSummary } from 'api/resources';
+import { importSwddFile, importBundledSwdd, useSwddSummary } from 'api/swdd';
 
 // ---------------------------------------------------------------------------
 // Data Sources — centralized upload hub for all input Excel files
@@ -62,6 +65,18 @@ const SOURCES = [
     accept: '.xlsx,.xls,.xlsm',
     description: 'Upload the Software FMEA workbook containing failure modes, severity, occurrence, detection, and RPN scores.',
     hasBundled: false,
+  },
+  {
+    id: 'swdd',
+    title: 'SW Detailed Design',
+    short: 'SWDD',
+    icon: IconSitemap,
+    color: '#a855f7',
+    accept: '.docx',
+    description: 'Upload the SW Detailed Design document (.docx) containing software items, units, and architecture decomposition.',
+    bundledLabel: 'Load Bundled Alaris SWDD',
+    hasBundled: true,
+    uploadLabel: 'Upload .docx',
   },
   {
     id: 'resources',
@@ -196,7 +211,7 @@ function SourceCard({ source, status, onUpload, onBundled, loading, result }) {
             onClick={() => fileRef.current?.click()}
             sx={{ textTransform: 'none', fontWeight: 500, flex: 1 }}
           >
-            Upload Excel
+            {source.uploadLabel || 'Upload Excel'}
           </Button>
           {hasBundled && (
             <Button
@@ -222,6 +237,7 @@ export default function DataSourcesPage() {
   const { staSummary } = useStaSummary(activeProject?.id);
   const { fmeaSummary, refreshFmea } = useFmeaSummary();
   const { resourceSummary, refreshResources } = useResourceSummary();
+  const { summary: swddSummary, refresh: refreshSwdd } = useSwddSummary();
 
   const [loading, setLoading] = useState({});
   const [results, setResults] = useState({});
@@ -246,6 +262,10 @@ export default function DataSourcesPage() {
           const res = await importFmeaFile(file);
           setResult('fmea', `Imported ${res.fmea_records ?? 0} FMEA records, ${res.common_causes ?? 0} common causes`);
           refreshFmea();
+        } else if (id === 'swdd') {
+          const res = await importSwddFile(file);
+          setResult('swdd', `Imported ${res.items_imported ?? 0} items, ${res.units_imported ?? 0} units, ${res.sections_imported ?? 0} sections`);
+          refreshSwdd();
         } else if (id === 'resources') {
           const res = await importResourceFile(file);
           setResult('resources', `Imported ${res.people_imported ?? 0} people, ${res.allocation_rows?.toLocaleString() ?? 0} allocation rows`);
@@ -271,6 +291,10 @@ export default function DataSourcesPage() {
         } else if (id === 'sta') {
           const res = await importBundledSta(activeProject.id);
           setResult('sta', `Enriched ${res.sw_trace?.matched ?? 0} SRDs from bundled STA`);
+        } else if (id === 'swdd') {
+          const res = await importBundledSwdd();
+          setResult('swdd', `Imported ${res.items_imported ?? 0} items, ${res.units_imported ?? 0} units, ${res.sections_imported ?? 0} sections`);
+          refreshSwdd();
         }
       } catch (err) {
         setResult(id, err?.response?.data?.detail || err.message || 'Import failed', true);
@@ -292,6 +316,9 @@ export default function DataSourcesPage() {
     fmea: fmeaSummary?.imported
       ? { imported: true, count: fmeaSummary.fmea_records, label: `${fmeaSummary.common_causes} common causes` }
       : { imported: false },
+    swdd: swddSummary?.imported
+      ? { imported: true, count: swddSummary.items, label: `${swddSummary.units} units · ${swddSummary.sections?.toLocaleString()} sections` }
+      : { imported: false },
     resources: resourceSummary?.imported
       ? { imported: true, count: resourceSummary.people_count, label: `${resourceSummary.allocation_rows?.toLocaleString()} allocations` }
       : { imported: false },
@@ -299,13 +326,7 @@ export default function DataSourcesPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0, mb: 0.5 }}>
-        <Typography sx={{ fontSize: 24, fontWeight: 800, letterSpacing: '-0.5px', color: '#fff', lineHeight: 1 }}>DATA</Typography>
-        <Typography sx={{ fontSize: 24, fontWeight: 300, letterSpacing: '-0.5px', color: '#4af', lineHeight: 1, ml: 0.5 }}>SOURCES</Typography>
-      </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-        Upload and manage input Excel files that feed the traceability, compliance, and resource views.
-      </Typography>
+      <PageTitle bold="DATA" accent="SOURCES" icon="datasources" sub="Upload and manage input Excel files that feed the traceability, compliance, and resource views." />
 
       <Grid container spacing={2}>
         {SOURCES.map((source) => (
