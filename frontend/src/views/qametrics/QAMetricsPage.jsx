@@ -295,60 +295,93 @@ export default function QAMetricsPage() {
         </Card>
       </Box>
 
-      {/* Row 1: Flow + Feature Table */}
-      <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#4af' }} />
-                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature → Requirement → Test Case Flow</Typography>
-              </Box>
-              <SankeyFlow data={sankeyReq} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#6c5ce7' }} />
-                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature-Wise Test Case Count</Typography>
-              </Box>
-              <FeatureTable data={featureData} />
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* ── DRILLED MODE: Requirement selected → trace up top + compact summary ── */}
+      {m.selected_requirement_id ? (
+        <>
+          <TracePanel requirementId={m.selected_requirement_id} srdId={reqFilter} />
 
-      {/* Row 2: Spec Flow + Spec Table */}
-      <Grid container spacing={2.5}>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#00d68f' }} />
-                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature → Specification → Test Case Flow</Typography>
-              </Box>
-              <SankeyFlow data={sankeySpec} />
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Card sx={{ height: '100%' }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ffaa00' }} />
-                <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Specification-Wise Test Case Count</Typography>
-              </Box>
-              <SpecTable data={specData} />
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+          {/* Compact summary strip */}
+          <Grid container spacing={1.5} sx={{ mt: 2 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card>
+                <CardContent sx={{ pb: '12px !important' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#6c5ce7' }} />
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature-Wise Test Case Count</Typography>
+                  </Box>
+                  <FeatureTable data={featureData} />
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card>
+                <CardContent sx={{ pb: '12px !important' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ffaa00' }} />
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Specification-Wise Test Case Count</Typography>
+                  </Box>
+                  <SpecTable data={specData} />
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </>
+      ) : (
+        /* ── DASHBOARD MODE: No specific requirement → full 2x2 layout ── */
+        <>
+          {/* Row 1: Flow + Feature Table */}
+          <Grid container spacing={2.5} sx={{ mb: 2.5 }}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#4af' }} />
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature → Requirement → Test Case Flow</Typography>
+                  </Box>
+                  <SankeyFlow data={sankeyReq} />
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#6c5ce7' }} />
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature-Wise Test Case Count</Typography>
+                  </Box>
+                  <FeatureTable data={featureData} />
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
 
-      {/* Trace panel — appears when a specific Requirement ID is selected */}
-      {m.selected_requirement_id && <TracePanel requirementId={m.selected_requirement_id} srdId={reqFilter} />}
+          {/* Row 2: Spec Flow + Spec Table */}
+          <Grid container spacing={2.5}>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#00d68f' }} />
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature → Specification → Test Case Flow</Typography>
+                  </Box>
+                  <SankeyFlow data={sankeySpec} />
+                </CardContent>
+              </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <Card sx={{ height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ffaa00' }} />
+                    <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Specification-Wise Test Case Count</Typography>
+                  </Box>
+                  <SpecTable data={specData} />
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+        </>
+      )}
     </Box>
   );
 }
