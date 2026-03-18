@@ -75,6 +75,53 @@ async def get_sta_summary(project_id: int):
     return _sta().get_summary(project_id)
 
 
+@router.get("/overview/{project_id}")
+async def get_sta_overview(project_id: int):
+    """Get STA executive overview with KPIs, module evidence, PRD sections."""
+    return _sta().get_overview(project_id)
+
+
+@router.get("/specs/{project_id}")
+async def get_spec_refs(
+    project_id: int,
+    module: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    """Query spec reference matrix with filtering."""
+    return _sta().get_spec_refs(
+        project_id, module=module, search=search, limit=limit, offset=offset
+    )
+
+
+@router.get("/design-outputs/{project_id}")
+async def get_design_outputs(
+    project_id: int,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Get design output traceability."""
+    return _sta().get_design_outputs(project_id, limit=limit, offset=offset)
+
+
+@router.get("/unit-tests/{project_id}")
+async def get_unit_tests(
+    project_id: int,
+    search: Optional[str] = Query(None),
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
+):
+    """Get unit test coverage."""
+    return _sta().get_unit_tests(project_id, search=search, limit=limit, offset=offset)
+
+
+@router.get("/version-coverage/{project_id}")
+async def get_version_coverage(project_id: int):
+    """Get per-version coverage progression."""
+    return _sta().get_version_coverage(project_id)
+
+
 @router.get("/versions/{project_id}")
 async def get_version_matrix(
     project_id: int,
