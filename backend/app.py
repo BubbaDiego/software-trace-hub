@@ -13,11 +13,13 @@ import core.rtm_core       # noqa: F401 — registers RTM schema
 import core.sta_core        # noqa: F401 — registers STA schema (FK refs to RTM)
 import core.fmea_core       # noqa: F401 — registers FMEA schema
 import core.resource_core   # noqa: F401 — registers Resource schema
+import core.swdd_core       # noqa: F401 — registers SWDD schema
 
 from routes.rtm_routes import router as rtm_router
 from routes.sta_routes import router as sta_router
 from routes.fmea_routes import router as fmea_router
 from routes.resource_routes import router as resource_router
+from routes.swdd_routes import router as swdd_router
 
 app = FastAPI(title="Software Trace Hub", version="1.0.0")
 
@@ -32,6 +34,7 @@ app.include_router(rtm_router)
 app.include_router(sta_router)
 app.include_router(fmea_router)
 app.include_router(resource_router)
+app.include_router(swdd_router)
 
 
 @app.get("/health")
