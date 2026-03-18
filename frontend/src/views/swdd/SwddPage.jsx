@@ -8,12 +8,10 @@ import PageTitle from 'components/PageTitle';
 import { useSwddSummary } from 'api/swdd';
 
 import SwddCrossRefs from './SwddCrossRefs';
-import SwddDecomposition from './SwddDecomposition';
 import SwddUnitExplorer from './SwddUnitExplorer';
 
 const TABS = [
   { label: 'Cross-Reference Matrix', color: '#a855f7' },
-  { label: 'Architecture Decomposition', color: '#f5a623' },
   { label: 'Unit Explorer', color: '#ff4757' },
 ];
 
@@ -65,8 +63,7 @@ export default function SwddPage() {
       </Tabs>
 
       {tab === 0 && <SwddCrossRefs />}
-      {tab === 1 && <SwddDecomposition />}
-      {tab === 2 && <SwddUnitExplorer />}
+      {tab === 1 && <SwddUnitExplorer />}
     </Box>
   );
 }
