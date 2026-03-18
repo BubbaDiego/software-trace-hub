@@ -159,6 +159,200 @@ class RTMCore:
 
         return {"items": items, "total": total, "limit": limit, "offset": offset}
 
+    def get_trace_graph(self, requirement_id: int) -> dict | None:
+        """Build a full traceability graph for a single requirement.
+
+        Returns nodes + edges suitable for a visual trace wizard.
+        """
+        req = self._db.fetchone(
+            "SELECT * FROM rtm_requirements WHERE id = ?", (requirement_id,)
+        )
+        if not req:
+            return None
+
+        r = dict(req)
+        rid = r["id"]
+        srd = r["srd_id"]
+        nodes = []
+        edges = []
+
+        # Fetch description from all available sources
+        description = ""
+        # 1. STA spec refs (best source)
+        desc_row = self._db.fetchone(
+            "SELECT description FROM rtm_sta_spec_refs WHERE srd_id = ? AND description != '' LIMIT 1",
+            (srd,))
+        if desc_row:
+            description = desc_row["description"]
+        # 2. FMEA requirement field (contains "SRD-XXXX: actual text")
+        if not description:
+            fmea_row = self._db.fetchone(
+                "SELECT requirement FROM fmea_records WHERE requirement LIKE ? LIMIT 1",
+                (f"%{srd}:%",))
+            if fmea_row:
+                # Extract just the text for this SRD
+                for line in fmea_row["requirement"].split("\n"):
+                    if srd in line and ":" in line:
+                        description = line.split(":", 1)[1].strip()
+                        break
+        # 3. Build from composite fields if still empty
+        if not description:
+            parts = [r.get("software_feature", ""), r.get("sub_feature", ""), r.get("software_function", "")]
+            desc_parts = [p for p in parts if p]
+            if desc_parts:
+                description = " → ".join(desc_parts)
+
+        # Center: Requirement (with full detail)
+        nodes.append({"id": f"req-{rid}", "type": "requirement", "label": srd,
+                       "sub": r.get("software_function") or r.get("feature") or "",
+                       "data": {"srd_id": srd, "feature": r["feature"],
+                                "sub_feature": r.get("sub_feature", ""),
+                                "software_feature": r.get("software_feature", ""),
+                                "software_function": r.get("software_function", ""),
+                                "module": r["impacted_modules"],
+                                "prd_modules": r.get("prd_modules", ""),
+                                "trace_status": r["trace_status"],
+                                "composite_key": r.get("composite_key", ""),
+                                "spec_id": r.get("spec_id", ""),
+                                "tracker_id": r.get("tracker_id", ""),
+                                "hazard_id": r.get("hazard_id", ""),
+                                "description": description}})
+
+        # Feature
+        if r["feature"]:
+            fid = f"feat-{r['feature']}"
+            nodes.append({"id": fid, "type": "feature", "label": r["feature"],
+                          "sub": r.get("sub_feature") or "",
+                          "data": {"software_feature": r.get("software_feature", ""),
+                                   "software_function": r.get("software_function", ""),
+                                   "sub_feature": r.get("sub_feature", "")}})
+            edges.append({"source": f"req-{rid}", "target": fid})
+
+        # Spec refs (STA)
+        specs = self._db.fetchall(
+            "SELECT * FROM rtm_sta_spec_refs WHERE requirement_id = ?", (rid,))
+        for s in specs:
+            s = dict(s)
+            spec_desc = s.get("description", "")
+            prd_section = s.get("prd_section", "")
+            sta_modules = s.get("sta_modules", "")
+            for ref_field, ref_type in [("asws_ref", "ASWS"), ("aswui_ref", "ASWUI"), ("aswis_ref", "ASWIS")]:
+                val = s.get(ref_field, "")
+                if val:
+                    for ref in [x.strip() for x in val.split(",") if x.strip()]:
+                        sid = f"spec-{ref}"
+                        if not any(n["id"] == sid for n in nodes):
+                            nodes.append({"id": sid, "type": "spec", "label": ref, "sub": ref_type,
+                                          "data": {"description": spec_desc, "prd_section": prd_section,
+                                                   "modules": sta_modules, "ref_type": ref_type}})
+                            edges.append({"source": f"req-{rid}", "target": sid})
+
+        # Design outputs
+        designs = self._db.fetchall(
+            "SELECT * FROM rtm_sta_design_outputs WHERE requirement_id = ?", (rid,))
+        for d in designs:
+            d = dict(d)
+            import json
+            drefs = json.loads(d.get("design_refs_json") or "[]")
+            ut_files = json.loads(d.get("unit_test_files_json") or "[]")
+            for i, dr in enumerate(drefs[:5]):
+                did = f"design-{rid}-{i}"
+                nodes.append({"id": did, "type": "design", "label": str(dr)[:40], "sub": "SDD Section",
+                              "data": {"design_ref": str(dr), "all_refs": drefs}})
+                edges.append({"source": f"req-{rid}", "target": did})
+
+            ut_count = d.get("unit_test_count", 0)
+            if ut_count > 0:
+                utid = f"ut-{rid}"
+                nodes.append({"id": utid, "type": "test", "label": f"{ut_count} Unit Tests",
+                              "sub": "Source files linked",
+                              "data": {"files": ut_files[:20], "total_files": ut_count}})
+                edges.append({"source": f"req-{rid}", "target": utid})
+
+        # Test evidence
+        evidence = self._db.fetchall(
+            "SELECT * FROM rtm_test_evidence WHERE requirement_id = ?", (rid,))
+        for e in evidence:
+            e = dict(e)
+            eid = f"ev-{e['id']}"
+            tc_count = e.get("tc_count", 0)
+            etype = e.get("evidence_type", "")
+            module = e.get("module_name", "")
+            tc_ids = json.loads(e.get("tc_ids_json") or "[]")
+            label = f"{module or etype}" + (f" · {tc_count} TCs" if tc_count else "")
+            nodes.append({"id": eid, "type": "test", "label": label, "sub": etype,
+                          "data": {"evidence_type": etype, "module": module,
+                                   "tc_count": tc_count, "tc_ids": tc_ids[:10]}})
+            edges.append({"source": f"req-{rid}", "target": eid})
+
+        # Gaps
+        gaps = self._db.fetchall(
+            "SELECT * FROM rtm_gap_analysis WHERE requirement_id = ?", (rid,))
+        for g in gaps:
+            g = dict(g)
+            gid = f"gap-{g['id']}"
+            nodes.append({"id": gid, "type": "gap",
+                          "label": f"{g['gap_type']} ({g['priority']})",
+                          "sub": g.get("assigned_to") or "Unassigned",
+                          "data": {"gap_type": g["gap_type"], "priority": g["priority"],
+                                   "assigned_to": g.get("assigned_to", ""),
+                                   "notes": g.get("notes", ""),
+                                   "feature": g.get("feature", ""),
+                                   "module": g.get("module", "")}})
+            edges.append({"source": f"req-{rid}", "target": gid})
+
+        # Hazard
+        if r.get("hazard_id"):
+            hid = f"haz-{r['hazard_id']}"
+            nodes.append({"id": hid, "type": "hazard", "label": r["hazard_id"], "sub": ""})
+            edges.append({"source": f"req-{rid}", "target": hid})
+
+        # FMEA cross-link (text match on requirement field)
+        fmea_rows = self._db.fetchall(
+            "SELECT id, fmea_id, hazard, product, severity, rcm_type, failure_mode "
+            "FROM fmea_records WHERE requirement LIKE ?",
+            (f"%{srd}%",))
+        for f in fmea_rows:
+            f = dict(f)
+            fid = f"fmea-{f['id']}"
+            nodes.append({"id": fid, "type": "fmea",
+                          "label": f["fmea_id"],
+                          "sub": f.get("product", ""),
+                          "data": {"hazard": f.get("hazard", ""),
+                                   "severity": f.get("severity", ""),
+                                   "failure_mode": f.get("failure_mode", "")}})
+            edges.append({"source": f"req-{rid}", "target": fid})
+            # Link FMEA hazard to hazard node if exists
+            if r.get("hazard_id"):
+                edges.append({"source": f"haz-{r['hazard_id']}", "target": fid})
+
+        # Version history
+        versions = self._db.fetchall(
+            "SELECT DISTINCT version_label FROM rtm_sta_version_verification "
+            "WHERE requirement_id = ? ORDER BY version_label", (rid,))
+        if versions:
+            vid = f"ver-{rid}"
+            vlabels = [v["version_label"] for v in versions]
+            nodes.append({"id": vid, "type": "version",
+                          "label": f"{len(vlabels)} Versions",
+                          "sub": ", ".join(vlabels)})
+            edges.append({"source": f"req-{rid}", "target": vid})
+
+        return {
+            "requirement": r,
+            "nodes": nodes,
+            "edges": edges,
+            "stats": {
+                "specs": len([n for n in nodes if n["type"] == "spec"]),
+                "design": len([n for n in nodes if n["type"] == "design"]),
+                "tests": len([n for n in nodes if n["type"] == "test"]),
+                "gaps": len([n for n in nodes if n["type"] == "gap"]),
+                "hazards": len([n for n in nodes if n["type"] == "hazard"]),
+                "fmea": len([n for n in nodes if n["type"] == "fmea"]),
+                "versions": len([n for n in nodes if n["type"] == "version"]),
+            },
+        }
+
     def get_requirement_detail(self, requirement_id: int) -> dict | None:
         """Get a single requirement with full evidence and gap info."""
         req = self._db.fetchone(
@@ -494,6 +688,71 @@ class RTMCore:
 
         items = sorted(features.values(), key=lambda x: -x["total_tcs"])
         return {"items": items, "total": len(items)}
+
+    # ── QA Metrics ──────────────────────────────────────────────
+
+    def get_qa_metrics(self, project_id: int) -> dict:
+        """Get QA metrics: feature/spec/requirement test case counts + flow data."""
+        # Total test cases
+        total_tcs = self._db.fetchone(
+            "SELECT SUM(tc_count) as c FROM rtm_test_evidence te "
+            "JOIN rtm_requirements r ON te.requirement_id = r.id "
+            "WHERE r.project_id = ?", (project_id,),
+        )["c"] or 0
+
+        # Feature → TC count
+        feature_tcs = self._db.fetchall(
+            "SELECT r.feature, SUM(e.tc_count) as total_tcs "
+            "FROM rtm_requirements r "
+            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            "WHERE r.project_id = ? AND r.feature != '' "
+            "GROUP BY r.feature ORDER BY total_tcs DESC",
+            (project_id,),
+        )
+
+        # Spec → TC count
+        spec_tcs = self._db.fetchall(
+            "SELECT r.spec_id, SUM(e.tc_count) as total_tcs "
+            "FROM rtm_requirements r "
+            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            "WHERE r.project_id = ? AND r.spec_id != '' "
+            "GROUP BY r.spec_id ORDER BY total_tcs DESC LIMIT 30",
+            (project_id,),
+        )
+
+        # Top SRDs for flow diagram (feature → srd → spec linkage)
+        flow_rows = self._db.fetchall(
+            "SELECT r.srd_id, r.feature, r.spec_id, SUM(e.tc_count) as total_tcs "
+            "FROM rtm_requirements r "
+            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            "WHERE r.project_id = ? AND r.srd_id != '' "
+            "GROUP BY r.srd_id ORDER BY total_tcs DESC LIMIT 10",
+            (project_id,),
+        )
+
+        # Unique counts
+        unique_features = self._db.fetchone(
+            "SELECT COUNT(DISTINCT feature) as c FROM rtm_requirements "
+            "WHERE project_id = ? AND feature != ''", (project_id,),
+        )["c"]
+        unique_specs = self._db.fetchone(
+            "SELECT COUNT(DISTINCT spec_id) as c FROM rtm_requirements "
+            "WHERE project_id = ? AND spec_id != ''", (project_id,),
+        )["c"]
+        unique_srds = self._db.fetchone(
+            "SELECT COUNT(DISTINCT srd_id) as c FROM rtm_requirements "
+            "WHERE project_id = ? AND srd_id != ''", (project_id,),
+        )["c"]
+
+        return {
+            "total_test_cases": total_tcs,
+            "unique_features": unique_features,
+            "unique_specs": unique_specs,
+            "unique_requirements": unique_srds,
+            "feature_tcs": [dict(r) for r in feature_tcs],
+            "spec_tcs": [dict(r) for r in spec_tcs],
+            "flow_data": [dict(r) for r in flow_rows],
+        }
 
     def delete_project(self, project_id: int) -> bool:
         """Delete a project and all associated data (cascades via FK)."""

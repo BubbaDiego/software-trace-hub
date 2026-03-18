@@ -16,6 +16,7 @@ const EP = {
   featureDetail: (id) => `/api/rtm/feature-detail/${id}`,
   featureGaps: (id) => `/api/rtm/feature-gaps/${id}`,
   featureEvidence: (id) => `/api/rtm/feature-evidence/${id}`,
+  qaMetrics: (id) => `/api/rtm/qa-metrics/${id}`,
   snapshots: (id) => `/api/rtm/snapshots/${id}`,
   exportJson: (id) => `/api/rtm/export/${id}?format=json`,
   exportCsv: (id) => `/api/rtm/export/${id}?format=csv`,
@@ -189,6 +190,16 @@ export function useFeatureEvidence(projectId) {
   const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
   return useMemo(() => ({
     evidenceData: data ?? null, loading: isLoading, error
+  }), [data, isLoading, error]);
+}
+
+// ── QA Metrics ────────────────────────────────────────────────────
+
+export function useQaMetrics(projectId) {
+  const key = projectId ? EP.qaMetrics(projectId) : null;
+  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
+  return useMemo(() => ({
+    metrics: data ?? null, loading: isLoading, error
   }), [data, isLoading, error]);
 }
 

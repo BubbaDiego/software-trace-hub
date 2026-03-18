@@ -192,6 +192,15 @@ async def get_requirement_detail(requirement_id: int):
     return result
 
 
+@router.get("/trace/{requirement_id}")
+async def get_trace_graph(requirement_id: int):
+    """Full traceability graph for a requirement — nodes + edges for visual trace wizard."""
+    result = _rtm().get_trace_graph(requirement_id)
+    if not result:
+        raise HTTPException(404, "Requirement not found")
+    return result
+
+
 # ── Gap Analysis ───────────────────────────────────────────────────
 
 @router.get("/gaps/{project_id}")
@@ -269,6 +278,14 @@ async def get_feature_gaps(project_id: int):
 async def get_feature_evidence(project_id: int):
     """Evidence breakdown (manual vs CATS) per feature."""
     return _rtm().get_feature_evidence(project_id)
+
+
+# ── QA Metrics ─────────────────────────────────────────────────────
+
+@router.get("/qa-metrics/{project_id}")
+async def get_qa_metrics(project_id: int):
+    """QA metrics: feature/spec test case counts + flow data."""
+    return _rtm().get_qa_metrics(project_id)
 
 
 # ── Snapshots ──────────────────────────────────────────────────────
