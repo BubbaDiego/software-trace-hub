@@ -190,7 +190,9 @@ export default function QAMetricsPage() {
   const { metrics, loading } = useQaMetrics(activeId);
 
   const [featureFilter, setFeatureFilter] = useState('All');
+  const [reqFilter, setReqFilter] = useState('All');
   const [specFilter, setSpecFilter] = useState('All');
+  const [hazardFilter, setHazardFilter] = useState('All');
 
   const m = metrics || {};
   const featureData = m.feature_tcs || [];
@@ -198,7 +200,12 @@ export default function QAMetricsPage() {
   const flowData = m.flow_data || [];
 
   const featureOptions = useMemo(() => ['All', ...featureData.map(f => f.feature)], [featureData]);
+  const reqOptions = useMemo(() => ['All', ...flowData.map(r => r.srd_id)], [flowData]);
   const specOptions = useMemo(() => ['All', ...specData.map(s => s.spec_id)], [specData]);
+  const hazardOptions = useMemo(() => {
+    const hazards = (m.hazard_ids || []);
+    return ['All', ...hazards];
+  }, [m.hazard_ids]);
 
   if (!activeProject) {
     return (
@@ -238,37 +245,42 @@ export default function QAMetricsPage() {
         Test case traceability — Feature → Requirement → Specification coverage
       </Typography>
 
-      {/* Filters + KPI */}
-      <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap', alignItems: 'center' }}>
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel>Feature</InputLabel>
-          <Select value={featureFilter} label="Feature" onChange={e => setFeatureFilter(e.target.value)}>
-            {featureOptions.map(f => <MenuItem key={f} value={f}>{f}</MenuItem>)}
+      {/* Filter row — matches Power BI layout: 4 dropdowns + Total TC card */}
+      <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'stretch' }}>
+        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Feature</Typography>
+          <Select value={featureFilter} onChange={e => setFeatureFilter(e.target.value)} size="small" variant="standard" disableUnderline
+            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
+            {featureOptions.map(f => <MenuItem key={f} value={f} sx={{ fontSize: '0.8rem' }}>{f}</MenuItem>)}
           </Select>
-        </FormControl>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel>Specification ID</InputLabel>
-          <Select value={specFilter} label="Specification ID" onChange={e => setSpecFilter(e.target.value)}>
-            {specOptions.map(s => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+        </Card>
+        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Requirement ID</Typography>
+          <Select value={reqFilter} onChange={e => setReqFilter(e.target.value)} size="small" variant="standard" disableUnderline
+            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
+            {reqOptions.map(r => <MenuItem key={r} value={r} sx={{ fontSize: '0.8rem' }}>{r}</MenuItem>)}
           </Select>
-        </FormControl>
-
-        {/* KPI cards */}
-        <Box sx={{ display: 'flex', gap: 1.5, ml: 'auto' }}>
-          {[
-            ['Total TCs', m.total_test_cases, '#4af'],
-            ['Features', m.unique_features, '#00d68f'],
-            ['Specs', m.unique_specs, '#f5a623'],
-            ['Requirements', m.unique_requirements, '#a855f7'],
-          ].map(([label, val, color]) => (
-            <Card key={label} sx={{ px: 2, py: 1, textAlign: 'center', borderTop: `2px solid ${color}`, minWidth: 90 }}>
-              <Typography sx={{ fontSize: '0.55rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled' }}>{label}</Typography>
-              <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, fontFamily: 'monospace', color: '#fff', lineHeight: 1.3 }}>
-                {(val || 0).toLocaleString()}
-              </Typography>
-            </Card>
-          ))}
-        </Box>
+        </Card>
+        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Specification ID</Typography>
+          <Select value={specFilter} onChange={e => setSpecFilter(e.target.value)} size="small" variant="standard" disableUnderline
+            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
+            {specOptions.map(s => <MenuItem key={s} value={s} sx={{ fontSize: '0.8rem' }}>{s}</MenuItem>)}
+          </Select>
+        </Card>
+        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Hazard ID</Typography>
+          <Select value={hazardFilter} onChange={e => setHazardFilter(e.target.value)} size="small" variant="standard" disableUnderline
+            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
+            {hazardOptions.map(h => <MenuItem key={h} value={h} sx={{ fontSize: '0.8rem' }}>{h}</MenuItem>)}
+          </Select>
+        </Card>
+        <Card sx={{ px: 3, py: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: '2px solid #4af', minWidth: 130 }}>
+          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled' }}>Total Test Cases</Typography>
+          <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'monospace', color: '#4af', lineHeight: 1.2 }}>
+            {(m.total_test_cases || 0).toLocaleString()}
+          </Typography>
+        </Card>
       </Box>
 
       {/* Row 1: Flow + Feature Table */}

@@ -744,6 +744,14 @@ class RTMCore:
             "WHERE project_id = ? AND srd_id != ''", (project_id,),
         )["c"]
 
+        # Hazard IDs
+        hazard_rows = self._db.fetchall(
+            "SELECT DISTINCT hazard_id FROM rtm_requirements "
+            "WHERE project_id = ? AND hazard_id != '' ORDER BY hazard_id",
+            (project_id,),
+        )
+        hazard_ids = [r["hazard_id"] for r in hazard_rows]
+
         return {
             "total_test_cases": total_tcs,
             "unique_features": unique_features,
@@ -752,6 +760,7 @@ class RTMCore:
             "feature_tcs": [dict(r) for r in feature_tcs],
             "spec_tcs": [dict(r) for r in spec_tcs],
             "flow_data": [dict(r) for r in flow_rows],
+            "hazard_ids": hazard_ids,
         }
 
     def delete_project(self, project_id: int) -> bool:
