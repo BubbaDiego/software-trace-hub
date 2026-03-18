@@ -25,7 +25,7 @@ function KpiCard({ label, value, sub, color, pct }) {
         <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>
           {label}
         </Typography>
-        <Typography variant="h3" sx={{ fontWeight: 700, color: color || 'text.primary', mt: 0.5 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, color: color || 'text.primary', mt: 0.5 }}>
           {typeof value === 'number' ? value.toLocaleString() : value}
         </Typography>
         {sub && (
@@ -91,7 +91,7 @@ function CoverageDonut({ covered, partial, missing, total, label }) {
             justifyContent: 'center'
           }}
         >
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h5" sx={{ fontWeight: 700 }}>
             {pctCov}%
           </Typography>
           <Typography variant="caption" color="text.secondary">
@@ -179,7 +179,7 @@ export default function ExecutiveOverview({ projectId, overview, staSummary }) {
             <Card variant="outlined" sx={{ borderLeft: '3px solid', borderLeftColor: 'primary.main' }}>
               <CardContent sx={{ pb: '12px !important' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>SRS Spec Links</Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'primary.main', mt: 0.5 }}>{(staSummary.spec_refs ?? 0).toLocaleString()}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'primary.main', mt: 0.5 }}>{(staSummary.spec_refs ?? 0).toLocaleString()}</Typography>
                 <Typography variant="caption" color="text.secondary">ASWS + ASWUI + ASWIS</Typography>
               </CardContent>
             </Card>
@@ -188,7 +188,7 @@ export default function ExecutiveOverview({ projectId, overview, staSummary }) {
             <Card variant="outlined" sx={{ borderLeft: '3px solid', borderLeftColor: 'secondary.main' }}>
               <CardContent sx={{ pb: '12px !important' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Design Outputs</Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'secondary.main', mt: 0.5 }}>{(staSummary.design_outputs ?? 0).toLocaleString()}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'secondary.main', mt: 0.5 }}>{(staSummary.design_outputs ?? 0).toLocaleString()}</Typography>
                 <Typography variant="caption" color="text.secondary">SDD section refs</Typography>
               </CardContent>
             </Card>
@@ -197,7 +197,7 @@ export default function ExecutiveOverview({ projectId, overview, staSummary }) {
             <Card variant="outlined" sx={{ borderLeft: '3px solid', borderLeftColor: 'success.main' }}>
               <CardContent sx={{ pb: '12px !important' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Unit Tests</Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'success.main', mt: 0.5 }}>{(staSummary.design_outputs ?? 0).toLocaleString()}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'success.main', mt: 0.5 }}>{(staSummary.design_outputs ?? 0).toLocaleString()}</Typography>
                 <Typography variant="caption" color="text.secondary">Source files linked</Typography>
               </CardContent>
             </Card>
@@ -206,7 +206,7 @@ export default function ExecutiveOverview({ projectId, overview, staSummary }) {
             <Card variant="outlined" sx={{ borderLeft: '3px solid', borderLeftColor: 'warning.main' }}>
               <CardContent sx={{ pb: '12px !important' }}>
                 <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: 0.8 }}>Versions Tracked</Typography>
-                <Typography variant="h4" sx={{ fontWeight: 700, color: 'warning.main', mt: 0.5 }}>{staSummary.versions_available?.length ?? 0}</Typography>
+                <Typography variant="h5" sx={{ fontWeight: 700, color: 'warning.main', mt: 0.5 }}>{staSummary.versions_available?.length ?? 0}</Typography>
                 <Typography variant="caption" color="text.secondary">{staSummary.versions_available?.join(', ') || ''}</Typography>
               </CardContent>
             </Card>
