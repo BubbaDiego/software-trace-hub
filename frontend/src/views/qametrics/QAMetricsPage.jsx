@@ -239,13 +239,13 @@ export default function QAMetricsPage() {
         <PageTitle bold="QA" accent="METRICS" icon="qa" />
       </Box>
 
-      {/* Top-level KPI row */}
+      {/* Top-level KPI row — Features first, Total Test Cases last */}
       <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
         {[
-          ['Total Test Cases', m.total_test_cases, '#4af'],
           ['Features', m.unique_features, '#00d68f'],
           ['Requirements', m.unique_requirements, '#a855f7'],
           ['Specifications', m.unique_specs, '#f5a623'],
+          ['Total Test Cases', m.total_test_cases, '#4af'],
         ].map(([label, val, color]) => (
           <Grid key={label} size={{ xs: 6, md: 3 }}>
             <Card sx={{ borderTop: `2px solid ${color}` }}>
@@ -260,7 +260,7 @@ export default function QAMetricsPage() {
         ))}
       </Grid>
 
-      {/* Filter cards with searchable Autocomplete */}
+      {/* Filter cards with searchable Autocomplete — no redundant Total TC card */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'stretch' }}>
         {[
           { label: 'Feature', value: featureFilter, set: setFeatureFilter, options: featureOptions },
@@ -288,12 +288,6 @@ export default function QAMetricsPage() {
             />
           </Card>
         ))}
-        <Card sx={{ px: 3, py: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: '2px solid #4af', minWidth: 130 }}>
-          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled' }}>Total Test Cases</Typography>
-          <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'monospace', color: '#4af', lineHeight: 1.2 }}>
-            {(m.total_test_cases || 0).toLocaleString()}
-          </Typography>
-        </Card>
       </Box>
 
       {/* ── DRILLED MODE: Requirement selected → trace up top + compact summary ── */}
