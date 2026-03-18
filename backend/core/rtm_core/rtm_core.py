@@ -807,7 +807,18 @@ class RTMCore:
             "all_specs": [r["spec_id"] for r in all_specs],
             "all_requirements": [r["srd_id"] for r in all_reqs],
             "all_hazards": [r["hazard_id"] for r in all_hazards],
+            "selected_requirement_id": self._resolve_srd_id(project_id, srd_id),
         }
+
+    def _resolve_srd_id(self, project_id: int, srd_id: str | None) -> int | None:
+        """Resolve a SRD string to its numeric requirement ID."""
+        if not srd_id or srd_id == "All":
+            return None
+        row = self._db.fetchone(
+            "SELECT id FROM rtm_requirements WHERE project_id = ? AND srd_id = ? LIMIT 1",
+            (project_id, srd_id),
+        )
+        return row["id"] if row else None
 
     def delete_project(self, project_id: int) -> bool:
         """Delete a project and all associated data (cascades via FK)."""

@@ -15,8 +15,13 @@ import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import CircularProgress from '@mui/material/CircularProgress';
 import Alert from '@mui/material/Alert';
+import ReactFlow, { Background, Controls, MiniMap } from 'reactflow';
+import 'reactflow/dist/style.css';
 import PageTitle from 'components/PageTitle';
 import { useRtmProjects, useQaMetrics } from 'api/rtm';
+import { useTraceGraph } from 'api/trace';
+import { swimlaneLayout, TYPE_COLORS } from 'views/trace/traceLayout';
+import { nodeTypes } from 'views/trace/TraceNode';
 
 // ── Sankey Flow Diagram ──────────────────────────────────────────
 
@@ -341,6 +346,102 @@ export default function QAMetricsPage() {
           </Card>
         </Grid>
       </Grid>
+
+      {/* Trace panel — appears when a specific Requirement ID is selected */}
+      {m.selected_requirement_id && <TracePanel requirementId={m.selected_requirement_id} srdId={reqFilter} />}
     </Box>
+  );
+}
+
+// ── Inline Trace Swimlane ────────────────────────────────────────
+
+const TRACE_LEGEND = [
+  { type: 'requirement', label: 'Requirement' },
+  { type: 'spec', label: 'Spec Ref' },
+  { type: 'feature', label: 'Feature' },
+  { type: 'design', label: 'Design' },
+  { type: 'test', label: 'Test' },
+  { type: 'hazard', label: 'Hazard' },
+  { type: 'fmea', label: 'FMEA' },
+  { type: 'version', label: 'Version' },
+  { type: 'gap', label: 'Gap' },
+];
+
+function TracePanel({ requirementId, srdId }) {
+  const { graph, traceLoading } = useTraceGraph(requirementId);
+
+  const { nodes, edges } = useMemo(() => {
+    if (!graph) return { nodes: [], edges: [] };
+    return swimlaneLayout(graph.nodes, graph.edges);
+  }, [graph]);
+
+  return (
+    <Card sx={{ mt: 2.5, border: '1px solid rgba(68,170,255,0.2)' }}>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#4af' }} />
+          <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>
+            Traceability Chain — {srdId}
+          </Typography>
+
+          {/* Stats chips */}
+          {graph?.stats && (
+            <Box sx={{ display: 'flex', gap: 0.5, ml: 1 }}>
+              {Object.entries(graph.stats).map(([k, v]) => v > 0 && (
+                <Chip key={k} label={`${k}: ${v}`} size="small" variant="outlined"
+                  sx={{ fontSize: '0.6rem', height: 20, borderColor: TYPE_COLORS[k]?.border || '#4af', color: TYPE_COLORS[k]?.text || '#4af' }} />
+              ))}
+            </Box>
+          )}
+        </Box>
+
+        {/* Legend */}
+        <Box sx={{ display: 'flex', gap: 1.5, mb: 1.5, flexWrap: 'wrap' }}>
+          {TRACE_LEGEND.map(({ type, label }) => (
+            <Box key={type} sx={{ display: 'flex', alignItems: 'center', gap: 0.4 }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: '2px', bgcolor: TYPE_COLORS[type]?.border || '#4af' }} />
+              <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary' }}>{label}</Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {/* ReactFlow canvas */}
+        <Box sx={{
+          width: '100%', height: 420,
+          border: '1px solid', borderColor: 'divider', borderRadius: 1,
+          bgcolor: 'background.default', overflow: 'hidden',
+        }}>
+          {traceLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+              <CircularProgress />
+            </Box>
+          ) : nodes.length > 0 ? (
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              fitView
+              fitViewOptions={{ padding: 0.3 }}
+              minZoom={0.3}
+              maxZoom={2}
+              defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
+              proOptions={{ hideAttribution: true }}
+            >
+              <Background color="rgba(68,170,255,0.06)" gap={20} />
+              <Controls showInteractive={false} />
+              <MiniMap
+                style={{ background: 'rgba(10,12,24,0.9)' }}
+                maskColor="rgba(68,170,255,0.08)"
+                nodeColor={(n) => TYPE_COLORS[n.data?.nodeType]?.border || '#4af'}
+              />
+            </ReactFlow>
+          ) : (
+            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: 'text.disabled' }}>
+              No trace data available
+            </Box>
+          )}
+        </Box>
+      </CardContent>
+    </Card>
   );
 }
