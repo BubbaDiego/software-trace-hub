@@ -234,16 +234,30 @@ export default function QAMetricsPage() {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
         <PageTitle bold="QA" accent="METRICS" icon="qa" />
-        <Chip label={`${(m.total_test_cases || 0).toLocaleString()} Test Cases`} size="small" sx={{
-          fontWeight: 700, fontSize: '0.72rem', fontFamily: 'monospace',
-          bgcolor: 'rgba(68,170,255,0.12)', color: '#4af', border: '1px solid rgba(68,170,255,0.25)',
-        }} />
       </Box>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontSize: '0.8rem' }}>
-        Test case traceability — Feature → Requirement → Specification coverage
-      </Typography>
+
+      {/* Top-level KPI row */}
+      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+        {[
+          ['Total Test Cases', m.total_test_cases, '#4af'],
+          ['Features', m.unique_features, '#00d68f'],
+          ['Requirements', m.unique_requirements, '#a855f7'],
+          ['Specifications', m.unique_specs, '#f5a623'],
+        ].map(([label, val, color]) => (
+          <Grid key={label} size={{ xs: 6, md: 3 }}>
+            <Card sx={{ borderTop: `2px solid ${color}` }}>
+              <CardContent sx={{ pb: '12px !important' }}>
+                <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled' }}>{label}</Typography>
+                <Typography sx={{ fontSize: '1.6rem', fontWeight: 700, fontFamily: 'monospace', color: '#fff', mt: 0.5 }}>
+                  {(val || 0).toLocaleString()}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
 
       {/* Filter row — matches Power BI layout: 4 dropdowns + Total TC card */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'stretch' }}>

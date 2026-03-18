@@ -710,13 +710,13 @@ class RTMCore:
             (project_id,),
         )
 
-        # Spec → TC count
+        # Spec → TC count (all specs)
         spec_tcs = self._db.fetchall(
             "SELECT r.spec_id, SUM(e.tc_count) as total_tcs "
             "FROM rtm_requirements r "
             "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
             "WHERE r.project_id = ? AND r.spec_id != '' "
-            "GROUP BY r.spec_id ORDER BY total_tcs DESC LIMIT 30",
+            "GROUP BY r.spec_id ORDER BY total_tcs DESC",
             (project_id,),
         )
 
