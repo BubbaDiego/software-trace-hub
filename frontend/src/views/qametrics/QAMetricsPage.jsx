@@ -3,10 +3,8 @@ import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
-import FormControl from '@mui/material/FormControl';
-import InputLabel from '@mui/material/InputLabel';
-import Select from '@mui/material/Select';
-import MenuItem from '@mui/material/MenuItem';
+import Autocomplete from '@mui/material/Autocomplete';
+import TextField from '@mui/material/TextField';
 import Table from '@mui/material/Table';
 import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
@@ -259,36 +257,34 @@ export default function QAMetricsPage() {
         ))}
       </Grid>
 
-      {/* Filter row — matches Power BI layout: 4 dropdowns + Total TC card */}
+      {/* Filter cards with searchable Autocomplete */}
       <Box sx={{ display: 'flex', gap: 1.5, mb: 3, flexWrap: 'wrap', alignItems: 'stretch' }}>
-        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Feature</Typography>
-          <Select value={featureFilter} onChange={e => setFeatureFilter(e.target.value)} size="small" variant="standard" disableUnderline
-            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
-            {featureOptions.map(f => <MenuItem key={f} value={f} sx={{ fontSize: '0.8rem' }}>{f}</MenuItem>)}
-          </Select>
-        </Card>
-        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Requirement ID</Typography>
-          <Select value={reqFilter} onChange={e => setReqFilter(e.target.value)} size="small" variant="standard" disableUnderline
-            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
-            {reqOptions.map(r => <MenuItem key={r} value={r} sx={{ fontSize: '0.8rem' }}>{r}</MenuItem>)}
-          </Select>
-        </Card>
-        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Specification ID</Typography>
-          <Select value={specFilter} onChange={e => setSpecFilter(e.target.value)} size="small" variant="standard" disableUnderline
-            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
-            {specOptions.map(s => <MenuItem key={s} value={s} sx={{ fontSize: '0.8rem' }}>{s}</MenuItem>)}
-          </Select>
-        </Card>
-        <Card sx={{ px: 2, py: 1, flex: '1 1 160px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>Hazard ID</Typography>
-          <Select value={hazardFilter} onChange={e => setHazardFilter(e.target.value)} size="small" variant="standard" disableUnderline
-            sx={{ fontFamily: 'monospace', fontSize: '0.8rem', '& .MuiSelect-select': { py: 0 } }}>
-            {hazardOptions.map(h => <MenuItem key={h} value={h} sx={{ fontSize: '0.8rem' }}>{h}</MenuItem>)}
-          </Select>
-        </Card>
+        {[
+          { label: 'Feature', value: featureFilter, set: setFeatureFilter, options: featureOptions },
+          { label: 'Requirement ID', value: reqFilter, set: setReqFilter, options: reqOptions },
+          { label: 'Specification ID', value: specFilter, set: setSpecFilter, options: specOptions },
+          { label: 'Hazard ID', value: hazardFilter, set: setHazardFilter, options: hazardOptions },
+        ].map(({ label, value, set, options }) => (
+          <Card key={label} sx={{ px: 1.5, py: 1, flex: '1 1 170px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled', mb: 0.5 }}>{label}</Typography>
+            <Autocomplete
+              size="small"
+              value={value}
+              onChange={(_, v) => set(v || 'All')}
+              options={options}
+              disableClearable={value === 'All'}
+              renderInput={(params) => (
+                <TextField {...params} variant="standard" placeholder="Type to search…"
+                  InputProps={{ ...params.InputProps, disableUnderline: true, sx: { fontFamily: 'monospace', fontSize: '0.8rem' } }}
+                />
+              )}
+              slotProps={{
+                listbox: { sx: { maxHeight: 280, fontSize: '0.78rem', fontFamily: 'monospace', '& .MuiAutocomplete-option': { py: 0.5, minHeight: 28 } } },
+                paper: { sx: { bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider' } },
+              }}
+            />
+          </Card>
+        ))}
         <Card sx={{ px: 3, py: 1, textAlign: 'center', display: 'flex', flexDirection: 'column', justifyContent: 'center', borderTop: '2px solid #4af', minWidth: 130 }}>
           <Typography sx={{ fontSize: '0.6rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px', color: 'text.disabled' }}>Total Test Cases</Typography>
           <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, fontFamily: 'monospace', color: '#4af', lineHeight: 1.2 }}>
