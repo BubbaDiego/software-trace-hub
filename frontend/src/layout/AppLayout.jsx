@@ -7,13 +7,14 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import { IconClipboardList, IconShieldCheck, IconAlertTriangle, IconBug, IconUsers, IconDatabaseImport, IconFileAnalytics } from '@tabler/icons-react';
+import { IconClipboardList, IconShieldCheck, IconAlertTriangle, IconBug, IconUsers, IconDatabaseImport, IconFileAnalytics, IconLayoutGrid } from '@tabler/icons-react';
 
 const DRAWER_WIDTH = 240;
 
 const NAV_ITEMS = [
   { path: '/rtm', label: 'RTM Tracker', icon: IconClipboardList, color: 'primary.main' },
   { path: '/sta', label: 'SW Traceability', icon: IconFileAnalytics, color: '#4af' },
+  { path: '/features', label: 'Features', icon: IconLayoutGrid, color: '#f5a623' },
   { path: '/iec62304', label: 'IEC 62304', icon: IconShieldCheck, color: 'success.main' },
   { path: '/iso14971', label: 'ISO 14971', icon: IconAlertTriangle, color: 'warning.main' },
   { path: '/fmea', label: 'Software FMEA', icon: IconBug, color: 'error.main' },

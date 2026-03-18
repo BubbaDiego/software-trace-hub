@@ -7,6 +7,7 @@ import ResourcesPage from './views/resources/ResourcesPage';
 import DataSourcesPage from './views/datasources/DataSourcesPage';
 import FmeaPage from './views/fmea/FmeaPage';
 import STAPage from './views/sta/STAPage';
+import FeaturesPage from './views/features/FeaturesPage';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route element={<AppLayout />}>
           <Route path="/rtm" element={<RTMPage />} />
           <Route path="/sta" element={<STAPage />} />
+          <Route path="/features" element={<FeaturesPage />} />
           <Route path="/iec62304" element={<IEC62304Page />} />
           <Route path="/iso14971" element={<ISO14971Page />} />
           <Route path="/fmea" element={<FmeaPage />} />

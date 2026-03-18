@@ -239,6 +239,38 @@ async def update_gap(
     return result
 
 
+# ── Feature Aggregations ──────────────────────────────────────
+
+@router.get("/feature-landscape/{project_id}")
+async def get_feature_landscape(project_id: int):
+    """All features with counts, coverage, modules, sub-feature counts."""
+    return _rtm().get_feature_landscape(project_id)
+
+
+@router.get("/feature-detail/{project_id}")
+async def get_feature_detail(
+    project_id: int,
+    feature: str = Query(..., description="Feature name"),
+):
+    """Detailed breakdown for a single feature."""
+    result = _rtm().get_feature_detail(project_id, feature)
+    if not result:
+        raise HTTPException(404, "Feature not found")
+    return result
+
+
+@router.get("/feature-gaps/{project_id}")
+async def get_feature_gaps(project_id: int):
+    """Gap analysis aggregated by feature."""
+    return _rtm().get_feature_gaps(project_id)
+
+
+@router.get("/feature-evidence/{project_id}")
+async def get_feature_evidence(project_id: int):
+    """Evidence breakdown (manual vs CATS) per feature."""
+    return _rtm().get_feature_evidence(project_id)
+
+
 # ── Snapshots ──────────────────────────────────────────────────────
 
 @router.get("/snapshots/{project_id}")

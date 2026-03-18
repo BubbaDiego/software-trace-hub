@@ -307,6 +307,194 @@ class RTMCore:
         )
         return [dict(r) for r in rows]
 
+    # ── Feature Aggregations ──────────────────────────────────────
+
+    def get_feature_landscape(self, project_id: int) -> dict:
+        """Get all features with their requirement counts, coverage, module span, and sub-feature counts."""
+        rows = self._db.fetchall(
+            "SELECT feature, sub_feature, trace_status, impacted_modules "
+            "FROM rtm_requirements WHERE project_id = ? AND feature != ''",
+            (project_id,),
+        )
+        features: dict[str, dict] = {}
+        for r in rows:
+            f = r["feature"]
+            if f not in features:
+                features[f] = {"feature": f, "total": 0, "covered": 0, "partial": 0,
+                               "missing": 0, "sub_features": set(), "modules": set()}
+            features[f]["total"] += 1
+            features[f][r["trace_status"]] = features[f].get(r["trace_status"], 0) + 1
+            if r["sub_feature"]:
+                features[f]["sub_features"].add(r["sub_feature"])
+            for m in r["impacted_modules"].split(","):
+                m = m.strip()
+                if m:
+                    features[f]["modules"].add(m)
+
+        items = []
+        for f in sorted(features.values(), key=lambda x: -x["total"]):
+            t = f["total"] or 1
+            items.append({
+                "feature": f["feature"],
+                "total": f["total"],
+                "covered": f.get("full", 0),
+                "partial": f.get("partial", 0),
+                "missing": f.get("missing", 0),
+                "coverage_pct": round(f.get("full", 0) / t * 100, 1),
+                "sub_feature_count": len(f["sub_features"]),
+                "module_count": len(f["modules"]),
+                "modules": sorted(f["modules"]),
+            })
+        return {"items": items, "total": len(items)}
+
+    def get_feature_detail(self, project_id: int, feature: str) -> dict:
+        """Get detailed breakdown for a single feature."""
+        rows = self._db.fetchall(
+            "SELECT id, sub_feature, trace_status, impacted_modules, hazard_id "
+            "FROM rtm_requirements WHERE project_id = ? AND feature = ?",
+            (project_id, feature),
+        )
+        if not rows:
+            return None
+
+        total = len(rows)
+        covered = sum(1 for r in rows if r["trace_status"] == "full")
+        partial = sum(1 for r in rows if r["trace_status"] == "partial")
+        missing = sum(1 for r in rows if r["trace_status"] == "missing")
+        hazard_linked = sum(1 for r in rows if r["hazard_id"])
+
+        # Sub-feature breakdown
+        subs: dict[str, dict] = {}
+        modules = set()
+        for r in rows:
+            sf = r["sub_feature"] or "(none)"
+            if sf not in subs:
+                subs[sf] = {"sub_feature": sf, "total": 0, "covered": 0}
+            subs[sf]["total"] += 1
+            if r["trace_status"] == "full":
+                subs[sf]["covered"] += 1
+            for m in r["impacted_modules"].split(","):
+                m = m.strip()
+                if m:
+                    modules.add(m)
+
+        sub_items = sorted(subs.values(), key=lambda x: -x["total"])
+        for s in sub_items:
+            s["coverage_pct"] = round(s["covered"] / (s["total"] or 1) * 100, 1)
+
+        # Evidence summary
+        req_ids = [r["id"] for r in rows]
+        manual_count = 0
+        cats_count = 0
+        total_tcs = 0
+        if req_ids:
+            placeholders = ",".join("?" * len(req_ids))
+            ev_rows = self._db.fetchall(
+                f"SELECT evidence_type, SUM(tc_count) as tc_sum, COUNT(*) as cnt "
+                f"FROM rtm_test_evidence WHERE requirement_id IN ({placeholders}) "
+                f"GROUP BY evidence_type",
+                tuple(req_ids),
+            )
+            for e in ev_rows:
+                total_tcs += e["tc_sum"] or 0
+                if "manual" in e["evidence_type"]:
+                    manual_count += e["cnt"]
+                if "cats" in e["evidence_type"]:
+                    cats_count += e["cnt"]
+
+        # Gap summary
+        gaps = self._db.fetchall(
+            "SELECT gap_type, priority, COUNT(*) as cnt "
+            "FROM rtm_gap_analysis WHERE project_id = ? AND feature = ? AND resolved_at IS NULL "
+            "GROUP BY gap_type, priority",
+            (project_id, feature),
+        )
+        gap_summary = [dict(g) for g in gaps]
+        total_gaps = sum(g["cnt"] for g in gap_summary)
+
+        # STA enrichment count
+        sta_count = 0
+        if req_ids:
+            sta_count = self._db.fetchone(
+                f"SELECT COUNT(*) as c FROM rtm_sta_spec_refs WHERE requirement_id IN ({placeholders})",
+                tuple(req_ids),
+            )["c"]
+
+        return {
+            "feature": feature,
+            "total": total,
+            "covered": covered,
+            "partial": partial,
+            "missing": missing,
+            "coverage_pct": round(covered / (total or 1) * 100, 1),
+            "hazard_linked": hazard_linked,
+            "module_count": len(modules),
+            "modules": sorted(modules),
+            "sub_features": sub_items,
+            "manual_evidence": manual_count,
+            "cats_evidence": cats_count,
+            "total_test_cases": total_tcs,
+            "gap_summary": gap_summary,
+            "total_gaps": total_gaps,
+            "sta_enrichment": sta_count,
+        }
+
+    def get_feature_gaps(self, project_id: int) -> dict:
+        """Get gap analysis aggregated by feature."""
+        rows = self._db.fetchall(
+            "SELECT feature, gap_type, priority, COUNT(*) as cnt "
+            "FROM rtm_gap_analysis WHERE project_id = ? AND resolved_at IS NULL AND feature != '' "
+            "GROUP BY feature, gap_type ORDER BY cnt DESC",
+            (project_id,),
+        )
+        # Aggregate by feature
+        features: dict[str, dict] = {}
+        for r in rows:
+            f = r["feature"]
+            if f not in features:
+                features[f] = {"feature": f, "total_gaps": 0, "no_tests": 0,
+                               "manual_only": 0, "no_spec": 0, "scenario_gap": 0}
+            features[f]["total_gaps"] += r["cnt"]
+            features[f][r["gap_type"]] = features[f].get(r["gap_type"], 0) + r["cnt"]
+
+        items = sorted(features.values(), key=lambda x: -x["total_gaps"])
+
+        # Global totals
+        totals = {"no_tests": 0, "manual_only": 0, "no_spec": 0, "scenario_gap": 0}
+        for f in items:
+            for gt in totals:
+                totals[gt] += f.get(gt, 0)
+
+        return {"items": items, "totals": totals, "feature_count": len(items)}
+
+    def get_feature_evidence(self, project_id: int) -> dict:
+        """Get evidence breakdown per feature: manual vs CATS counts."""
+        rows = self._db.fetchall(
+            "SELECT r.feature, e.evidence_type, COUNT(*) as cnt, SUM(e.tc_count) as tc_sum "
+            "FROM rtm_requirements r "
+            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            "WHERE r.project_id = ? AND r.feature != '' "
+            "GROUP BY r.feature, e.evidence_type",
+            (project_id,),
+        )
+        features: dict[str, dict] = {}
+        for r in rows:
+            f = r["feature"]
+            if f not in features:
+                features[f] = {"feature": f, "manual_rows": 0, "cats_rows": 0,
+                               "manual_tcs": 0, "cats_tcs": 0, "total_tcs": 0}
+            tc = r["tc_sum"] or 0
+            features[f]["total_tcs"] += tc
+            if "manual" in r["evidence_type"]:
+                features[f]["manual_rows"] += r["cnt"]
+                features[f]["manual_tcs"] += tc
+            if "cats" in r["evidence_type"]:
+                features[f]["cats_rows"] += r["cnt"]
+                features[f]["cats_tcs"] += tc
+
+        items = sorted(features.values(), key=lambda x: -x["total_tcs"])
+        return {"items": items, "total": len(items)}
+
     def delete_project(self, project_id: int) -> bool:
         """Delete a project and all associated data (cascades via FK)."""
         existing = self._db.fetchone(

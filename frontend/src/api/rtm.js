@@ -12,6 +12,10 @@ const EP = {
   requirements: '/api/rtm/requirements',
   requirementDetail: (id) => `/api/rtm/requirements/${id}`,
   gaps: (id) => `/api/rtm/gaps/${id}`,
+  featureLandscape: (id) => `/api/rtm/feature-landscape/${id}`,
+  featureDetail: (id) => `/api/rtm/feature-detail/${id}`,
+  featureGaps: (id) => `/api/rtm/feature-gaps/${id}`,
+  featureEvidence: (id) => `/api/rtm/feature-evidence/${id}`,
   snapshots: (id) => `/api/rtm/snapshots/${id}`,
   exportJson: (id) => `/api/rtm/export/${id}?format=json`,
   exportCsv: (id) => `/api/rtm/export/${id}?format=csv`,
@@ -149,6 +153,42 @@ export function useRtmSnapshots(projectId) {
     snapshots: data ?? [],
     loading: isLoading,
     error
+  }), [data, isLoading, error]);
+}
+
+// ── Feature Aggregations ──────────────────────────────────────────
+
+export function useFeatureLandscape(projectId) {
+  const key = projectId ? EP.featureLandscape(projectId) : null;
+  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
+  return useMemo(() => ({
+    landscape: data ?? null, loading: isLoading, error
+  }), [data, isLoading, error]);
+}
+
+export function useFeatureDetail(projectId, feature) {
+  const params = new URLSearchParams();
+  if (feature) params.set('feature', feature);
+  const key = projectId && feature ? `${EP.featureDetail(projectId)}?${params.toString()}` : null;
+  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
+  return useMemo(() => ({
+    detail: data ?? null, loading: isLoading, error
+  }), [data, isLoading, error]);
+}
+
+export function useFeatureGaps(projectId) {
+  const key = projectId ? EP.featureGaps(projectId) : null;
+  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
+  return useMemo(() => ({
+    gapData: data ?? null, loading: isLoading, error
+  }), [data, isLoading, error]);
+}
+
+export function useFeatureEvidence(projectId) {
+  const key = projectId ? EP.featureEvidence(projectId) : null;
+  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
+  return useMemo(() => ({
+    evidenceData: data ?? null, loading: isLoading, error
   }), [data, isLoading, error]);
 }
 
