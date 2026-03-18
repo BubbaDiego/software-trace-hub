@@ -195,9 +195,15 @@ export function useFeatureEvidence(projectId) {
 
 // ── QA Metrics ────────────────────────────────────────────────────
 
-export function useQaMetrics(projectId) {
-  const key = projectId ? EP.qaMetrics(projectId) : null;
-  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false });
+export function useQaMetrics(projectId, { feature, srdId, specId, hazardId } = {}) {
+  const params = new URLSearchParams();
+  if (feature && feature !== 'All') params.set('feature', feature);
+  if (srdId && srdId !== 'All') params.set('srd_id', srdId);
+  if (specId && specId !== 'All') params.set('spec_id', specId);
+  if (hazardId && hazardId !== 'All') params.set('hazard_id', hazardId);
+  const qs = params.toString();
+  const key = projectId ? `${EP.qaMetrics(projectId)}${qs ? '?' + qs : ''}` : null;
+  const { data, isLoading, error } = useSWR(key, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
   return useMemo(() => ({
     metrics: data ?? null, loading: isLoading, error
   }), [data, isLoading, error]);

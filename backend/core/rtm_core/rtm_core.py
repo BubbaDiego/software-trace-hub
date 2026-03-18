@@ -691,66 +691,109 @@ class RTMCore:
 
     # ── QA Metrics ──────────────────────────────────────────────
 
-    def get_qa_metrics(self, project_id: int) -> dict:
-        """Get QA metrics: feature/spec/requirement test case counts + flow data."""
-        # Total test cases
+    def get_qa_metrics(
+        self,
+        project_id: int,
+        feature: str | None = None,
+        srd_id: str | None = None,
+        spec_id: str | None = None,
+        hazard_id: str | None = None,
+    ) -> dict:
+        """Get QA metrics with optional cross-filters.
+
+        When a filter is set, ALL aggregations narrow to that subset.
+        """
+        # Build a WHERE clause for the requirement filter
+        conditions = ["r.project_id = ?"]
+        params: list = [project_id]
+
+        if feature and feature != "All":
+            conditions.append("r.feature = ?")
+            params.append(feature)
+        if srd_id and srd_id != "All":
+            conditions.append("r.srd_id = ?")
+            params.append(srd_id)
+        if spec_id and spec_id != "All":
+            conditions.append("r.spec_id = ?")
+            params.append(spec_id)
+        if hazard_id and hazard_id != "All":
+            conditions.append("r.hazard_id = ?")
+            params.append(hazard_id)
+
+        where = " AND ".join(conditions)
+
+        # Total test cases (filtered)
         total_tcs = self._db.fetchone(
-            "SELECT SUM(tc_count) as c FROM rtm_test_evidence te "
-            "JOIN rtm_requirements r ON te.requirement_id = r.id "
-            "WHERE r.project_id = ?", (project_id,),
+            f"SELECT SUM(e.tc_count) as c FROM rtm_test_evidence e "
+            f"JOIN rtm_requirements r ON e.requirement_id = r.id "
+            f"WHERE {where}", tuple(params),
         )["c"] or 0
 
-        # Feature → TC count
+        # Feature → TC count (filtered)
         feature_tcs = self._db.fetchall(
-            "SELECT r.feature, SUM(e.tc_count) as total_tcs "
-            "FROM rtm_requirements r "
-            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
-            "WHERE r.project_id = ? AND r.feature != '' "
-            "GROUP BY r.feature ORDER BY total_tcs DESC",
-            (project_id,),
+            f"SELECT r.feature, SUM(e.tc_count) as total_tcs "
+            f"FROM rtm_requirements r "
+            f"JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            f"WHERE {where} AND r.feature != '' "
+            f"GROUP BY r.feature ORDER BY total_tcs DESC",
+            tuple(params),
         )
 
-        # Spec → TC count (all specs)
+        # Spec → TC count (filtered)
         spec_tcs = self._db.fetchall(
-            "SELECT r.spec_id, SUM(e.tc_count) as total_tcs "
-            "FROM rtm_requirements r "
-            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
-            "WHERE r.project_id = ? AND r.spec_id != '' "
-            "GROUP BY r.spec_id ORDER BY total_tcs DESC",
-            (project_id,),
+            f"SELECT r.spec_id, SUM(e.tc_count) as total_tcs "
+            f"FROM rtm_requirements r "
+            f"JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            f"WHERE {where} AND r.spec_id != '' "
+            f"GROUP BY r.spec_id ORDER BY total_tcs DESC",
+            tuple(params),
         )
 
-        # Top SRDs for flow diagram (feature → srd → spec linkage)
+        # Top SRDs for flow diagram (filtered)
         flow_rows = self._db.fetchall(
-            "SELECT r.srd_id, r.feature, r.spec_id, SUM(e.tc_count) as total_tcs "
-            "FROM rtm_requirements r "
-            "JOIN rtm_test_evidence e ON e.requirement_id = r.id "
-            "WHERE r.project_id = ? AND r.srd_id != '' "
-            "GROUP BY r.srd_id ORDER BY total_tcs DESC LIMIT 10",
-            (project_id,),
+            f"SELECT r.srd_id, r.feature, r.spec_id, SUM(e.tc_count) as total_tcs "
+            f"FROM rtm_requirements r "
+            f"JOIN rtm_test_evidence e ON e.requirement_id = r.id "
+            f"WHERE {where} AND r.srd_id != '' "
+            f"GROUP BY r.srd_id ORDER BY total_tcs DESC LIMIT 10",
+            tuple(params),
         )
 
-        # Unique counts
+        # Unique counts (filtered)
         unique_features = self._db.fetchone(
-            "SELECT COUNT(DISTINCT feature) as c FROM rtm_requirements "
-            "WHERE project_id = ? AND feature != ''", (project_id,),
+            f"SELECT COUNT(DISTINCT r.feature) as c FROM rtm_requirements r "
+            f"WHERE {where} AND r.feature != ''", tuple(params),
         )["c"]
         unique_specs = self._db.fetchone(
-            "SELECT COUNT(DISTINCT spec_id) as c FROM rtm_requirements "
-            "WHERE project_id = ? AND spec_id != ''", (project_id,),
+            f"SELECT COUNT(DISTINCT r.spec_id) as c FROM rtm_requirements r "
+            f"WHERE {where} AND r.spec_id != ''", tuple(params),
         )["c"]
         unique_srds = self._db.fetchone(
-            "SELECT COUNT(DISTINCT srd_id) as c FROM rtm_requirements "
-            "WHERE project_id = ? AND srd_id != ''", (project_id,),
+            f"SELECT COUNT(DISTINCT r.srd_id) as c FROM rtm_requirements r "
+            f"WHERE {where} AND r.srd_id != ''", tuple(params),
         )["c"]
 
-        # Hazard IDs
-        hazard_rows = self._db.fetchall(
+        # All available filter options (unfiltered — so dropdowns always show full lists)
+        all_features = self._db.fetchall(
+            "SELECT DISTINCT feature FROM rtm_requirements "
+            "WHERE project_id = ? AND feature != '' ORDER BY feature",
+            (project_id,),
+        )
+        all_specs = self._db.fetchall(
+            "SELECT DISTINCT spec_id FROM rtm_requirements "
+            "WHERE project_id = ? AND spec_id != '' ORDER BY spec_id",
+            (project_id,),
+        )
+        all_reqs = self._db.fetchall(
+            "SELECT DISTINCT srd_id FROM rtm_requirements "
+            "WHERE project_id = ? AND srd_id != '' ORDER BY srd_id",
+            (project_id,),
+        )
+        all_hazards = self._db.fetchall(
             "SELECT DISTINCT hazard_id FROM rtm_requirements "
             "WHERE project_id = ? AND hazard_id != '' ORDER BY hazard_id",
             (project_id,),
         )
-        hazard_ids = [r["hazard_id"] for r in hazard_rows]
 
         return {
             "total_test_cases": total_tcs,
@@ -760,7 +803,10 @@ class RTMCore:
             "feature_tcs": [dict(r) for r in feature_tcs],
             "spec_tcs": [dict(r) for r in spec_tcs],
             "flow_data": [dict(r) for r in flow_rows],
-            "hazard_ids": hazard_ids,
+            "all_features": [r["feature"] for r in all_features],
+            "all_specs": [r["spec_id"] for r in all_specs],
+            "all_requirements": [r["srd_id"] for r in all_reqs],
+            "all_hazards": [r["hazard_id"] for r in all_hazards],
         }
 
     def delete_project(self, project_id: int) -> bool:

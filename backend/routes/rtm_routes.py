@@ -283,9 +283,18 @@ async def get_feature_evidence(project_id: int):
 # ── QA Metrics ─────────────────────────────────────────────────────
 
 @router.get("/qa-metrics/{project_id}")
-async def get_qa_metrics(project_id: int):
-    """QA metrics: feature/spec test case counts + flow data."""
-    return _rtm().get_qa_metrics(project_id)
+async def get_qa_metrics(
+    project_id: int,
+    feature: Optional[str] = Query(None),
+    srd_id: Optional[str] = Query(None),
+    spec_id: Optional[str] = Query(None),
+    hazard_id: Optional[str] = Query(None),
+):
+    """QA metrics with cross-filtering: all panels narrow to the selected subset."""
+    return _rtm().get_qa_metrics(
+        project_id, feature=feature, srd_id=srd_id,
+        spec_id=spec_id, hazard_id=hazard_id,
+    )
 
 
 # ── Snapshots ──────────────────────────────────────────────────────

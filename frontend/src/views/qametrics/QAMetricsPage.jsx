@@ -100,12 +100,8 @@ function SankeyFlow({ data }) {
 
 // ── Feature Table ────────────────────────────────────────────────
 
-function FeatureTable({ data, filter }) {
+function FeatureTable({ data }) {
   const maxCount = data[0]?.total_tcs || 1;
-  const filtered = useMemo(() =>
-    filter === 'All' ? data : data.filter(f => f.feature === filter),
-    [data, filter]
-  );
 
   return (
     <TableContainer sx={{ maxHeight: 370, overflowY: 'auto' }}>
@@ -118,7 +114,7 @@ function FeatureTable({ data, filter }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {filtered.map(f => (
+          {data.map(f => (
             <TableRow key={f.feature} hover>
               <TableCell sx={{ fontSize: '0.78rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 200 }}>
                 {f.feature}
@@ -145,12 +141,7 @@ function FeatureTable({ data, filter }) {
 
 // ── Spec Table ───────────────────────────────────────────────────
 
-function SpecTable({ data, filter }) {
-  const filtered = useMemo(() =>
-    filter === 'All' ? data : data.filter(s => s.spec_id === filter),
-    [data, filter]
-  );
-
+function SpecTable({ data }) {
   return (
     <TableContainer sx={{ maxHeight: 370, overflowY: 'auto' }}>
       <Table size="small" stickyHeader>
@@ -161,7 +152,7 @@ function SpecTable({ data, filter }) {
           </TableRow>
         </TableHead>
         <TableBody>
-          {filtered.map(s => (
+          {data.map(s => (
             <TableRow key={s.spec_id} hover>
               <TableCell sx={{ fontFamily: 'monospace', fontSize: '0.78rem' }}>{s.spec_id}</TableCell>
               <TableCell align="right">
@@ -185,25 +176,31 @@ export default function QAMetricsPage() {
   const { projects } = useRtmProjects();
   const activeProject = projects?.[0];
   const activeId = activeProject?.id;
-  const { metrics, loading } = useQaMetrics(activeId);
-
   const [featureFilter, setFeatureFilter] = useState('All');
   const [reqFilter, setReqFilter] = useState('All');
   const [specFilter, setSpecFilter] = useState('All');
   const [hazardFilter, setHazardFilter] = useState('All');
+
+  // Pass filters to backend — all panels re-query together
+  const { metrics, loading } = useQaMetrics(activeId, {
+    feature: featureFilter,
+    srdId: reqFilter,
+    specId: specFilter,
+    hazardId: hazardFilter,
+  });
 
   const m = metrics || {};
   const featureData = m.feature_tcs || [];
   const specData = m.spec_tcs || [];
   const flowData = m.flow_data || [];
 
-  const featureOptions = useMemo(() => ['All', ...featureData.map(f => f.feature)], [featureData]);
-  const reqOptions = useMemo(() => ['All', ...flowData.map(r => r.srd_id)], [flowData]);
-  const specOptions = useMemo(() => ['All', ...specData.map(s => s.spec_id)], [specData]);
-  const hazardOptions = useMemo(() => {
-    const hazards = (m.hazard_ids || []);
-    return ['All', ...hazards];
-  }, [m.hazard_ids]);
+  // Dropdown options come from unfiltered lists (always show all choices)
+  const featureOptions = useMemo(() => ['All', ...(m.all_features || [])], [m.all_features]);
+  const reqOptions = useMemo(() => ['All', ...(m.all_requirements || [])], [m.all_requirements]);
+  const specOptions = useMemo(() => ['All', ...(m.all_specs || [])], [m.all_specs]);
+  const hazardOptions = useMemo(() => ['All', ...(m.all_hazards || [])], [m.all_hazards]);
+
+  const hasFilters = featureFilter !== 'All' || reqFilter !== 'All' || specFilter !== 'All' || hazardFilter !== 'All';
 
   if (!activeProject) {
     return (
@@ -214,9 +211,9 @@ export default function QAMetricsPage() {
     );
   }
 
-  if (loading) return <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress /></Box>;
+  if (loading && !metrics) return <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress /></Box>;
 
-  // Build sankey data from real flow_data
+  // Build sankey data from filtered flow_data
   const sankeyReq = {
     left: flowData.slice(0, 8).map((r, i) => ({ id: `f${i}`, label: r.feature?.slice(0, 20) || '—' })),
     mid: flowData.slice(0, 8).map((r, i) => ({ id: `r${i}`, label: r.srd_id })),
@@ -313,7 +310,7 @@ export default function QAMetricsPage() {
                 <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#6c5ce7' }} />
                 <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Feature-Wise Test Case Count</Typography>
               </Box>
-              <FeatureTable data={featureData} filter={featureFilter} />
+              <FeatureTable data={featureData} />
             </CardContent>
           </Card>
         </Grid>
@@ -339,7 +336,7 @@ export default function QAMetricsPage() {
                 <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#ffaa00' }} />
                 <Typography sx={{ fontSize: '0.82rem', fontWeight: 600 }}>Specification-Wise Test Case Count</Typography>
               </Box>
-              <SpecTable data={specData} filter={specFilter} />
+              <SpecTable data={specData} />
             </CardContent>
           </Card>
         </Grid>
