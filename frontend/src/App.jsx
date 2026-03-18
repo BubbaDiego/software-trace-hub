@@ -8,6 +8,8 @@ import DataSourcesPage from './views/datasources/DataSourcesPage';
 import FmeaPage from './views/fmea/FmeaPage';
 import STAPage from './views/sta/STAPage';
 import FeaturesPage from './views/features/FeaturesPage';
+import TraceWizardPage from './views/trace/TraceWizardPage';
+import SwddPage from './views/swdd/SwddPage';
 
 export default function App() {
   return (
@@ -17,6 +19,8 @@ export default function App() {
           <Route path="/rtm" element={<RTMPage />} />
           <Route path="/sta" element={<STAPage />} />
           <Route path="/features" element={<FeaturesPage />} />
+          <Route path="/trace" element={<TraceWizardPage />} />
+          <Route path="/swdd" element={<SwddPage />} />
           <Route path="/iec62304" element={<IEC62304Page />} />
           <Route path="/iso14971" element={<ISO14971Page />} />
           <Route path="/fmea" element={<FmeaPage />} />

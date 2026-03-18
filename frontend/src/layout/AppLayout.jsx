@@ -7,19 +7,44 @@ import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Typography from '@mui/material/Typography';
 import Divider from '@mui/material/Divider';
-import { IconClipboardList, IconShieldCheck, IconAlertTriangle, IconBug, IconUsers, IconDatabaseImport, IconFileAnalytics, IconLayoutGrid } from '@tabler/icons-react';
+import { IconClipboardList, IconShieldCheck, IconAlertTriangle, IconBug, IconUsers, IconDatabaseImport, IconFileAnalytics, IconLayoutGrid, IconWand, IconReportAnalytics, IconChartBar, IconFileExport, IconSitemap } from '@tabler/icons-react';
 
 const DRAWER_WIDTH = 240;
 
-const NAV_ITEMS = [
-  { path: '/rtm', label: 'RTM Tracker', icon: IconClipboardList, color: 'primary.main' },
-  { path: '/sta', label: 'SW Traceability', icon: IconFileAnalytics, color: '#4af' },
-  { path: '/features', label: 'Features', icon: IconLayoutGrid, color: '#f5a623' },
-  { path: '/iec62304', label: 'IEC 62304', icon: IconShieldCheck, color: 'success.main' },
-  { path: '/iso14971', label: 'ISO 14971', icon: IconAlertTriangle, color: 'warning.main' },
-  { path: '/fmea', label: 'Software FMEA', icon: IconBug, color: 'error.main' },
-  { path: '/resources', label: 'Resources', icon: IconUsers, color: 'info.main' },
-  { path: '/data-sources', label: 'Data Sources', icon: IconDatabaseImport, color: 'secondary.main' },
+const NAV_SECTIONS = [
+  {
+    header: 'Trace',
+    items: [
+      { path: '/rtm', label: 'RTM Tracker', icon: IconClipboardList, color: 'primary.main' },
+      { path: '/sta', label: 'SW Traceability', icon: IconFileAnalytics, color: '#4af' },
+      { path: '/features', label: 'Features', icon: IconLayoutGrid, color: '#f5a623' },
+      { path: '/trace', label: 'Trace Wizard', icon: IconWand, color: '#4af' },
+      { path: '/swdd', label: 'Detailed Design', icon: IconSitemap, color: '#a855f7' },
+    ],
+  },
+  {
+    header: 'Audit Support',
+    items: [
+      { path: '/iec62304', label: 'IEC 62304', icon: IconShieldCheck, color: 'success.main' },
+      { path: '/iso14971', label: 'ISO 14971', icon: IconAlertTriangle, color: 'warning.main' },
+      { path: '/fmea', label: 'Software FMEA', icon: IconBug, color: 'error.main' },
+    ],
+  },
+  {
+    header: 'Reports',
+    items: [
+      { path: '/reports/coverage', label: 'Coverage Summary', icon: IconReportAnalytics, color: 'text.secondary', disabled: true },
+      { path: '/reports/gap', label: 'Gap Report', icon: IconChartBar, color: 'text.secondary', disabled: true },
+      { path: '/reports/export', label: 'Export Package', icon: IconFileExport, color: 'text.secondary', disabled: true },
+    ],
+  },
+  {
+    header: 'Planning',
+    items: [
+      { path: '/resources', label: 'Resources', icon: IconUsers, color: 'info.main' },
+      { path: '/data-sources', label: 'Data Sources', icon: IconDatabaseImport, color: 'secondary.main' },
+    ],
+  },
 ];
 
 // ── Animated Orbitor (from Sonic10) ──────────────────────────────
@@ -104,37 +129,48 @@ export default function AppLayout() {
           </Box>
         </Box>
         <Divider />
-        <List sx={{ px: 1, pt: 1 }}>
-          {NAV_ITEMS.map(({ path, label, icon: Icon, color }) => {
-            const active = location.pathname === path;
-            return (
-              <ListItemButton
-                key={path}
-                selected={active}
-                onClick={() => navigate(path)}
-                sx={{
-                  borderRadius: 1,
-                  mb: 0.5,
-                  '&.Mui-selected': {
-                    bgcolor: 'action.selected',
-                    '&:hover': { bgcolor: 'action.selected' }
-                  }
-                }}
-              >
-                <ListItemIcon sx={{ minWidth: 36, color: active ? color : 'text.secondary' }}>
-                  <Icon size={20} />
-                </ListItemIcon>
-                <ListItemText
-                  primary={label}
-                  primaryTypographyProps={{
-                    variant: 'body2',
-                    fontWeight: active ? 600 : 400
-                  }}
-                />
-              </ListItemButton>
-            );
-          })}
-        </List>
+        {NAV_SECTIONS.map((section, si) => (
+          <Box key={section.header}>
+            <Typography sx={{ px: 2, pt: si === 0 ? 1.5 : 1, pb: 0.5, fontSize: '0.6rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.2px', color: 'text.secondary', userSelect: 'none' }}>
+              {section.header}
+            </Typography>
+            <List sx={{ px: 1, pt: 0, pb: 0.5 }}>
+              {section.items.map(({ path, label, icon: Icon, color, disabled }) => {
+                const active = location.pathname === path;
+                return (
+                  <ListItemButton
+                    key={path}
+                    selected={active}
+                    disabled={disabled}
+                    onClick={() => !disabled && navigate(path)}
+                    sx={{
+                      borderRadius: 1,
+                      mb: 0.25,
+                      py: 0.5,
+                      opacity: disabled ? 0.4 : 1,
+                      '&.Mui-selected': {
+                        bgcolor: 'action.selected',
+                        '&:hover': { bgcolor: 'action.selected' }
+                      }
+                    }}
+                  >
+                    <ListItemIcon sx={{ minWidth: 36, color: active ? color : 'text.secondary' }}>
+                      <Icon size={18} />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={disabled ? `${label} (TBD)` : label}
+                      primaryTypographyProps={{
+                        variant: 'body2',
+                        fontWeight: active ? 600 : 400,
+                        fontSize: '0.82rem',
+                      }}
+                    />
+                  </ListItemButton>
+                );
+              })}
+            </List>
+          </Box>
+        ))}
       </Drawer>
       <Box component="main" sx={{ flex: 1, p: '28px 32px', overflow: 'auto', maxWidth: 1600, mx: 'auto' }}>
         <Outlet />
