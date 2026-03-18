@@ -192,6 +192,14 @@ export default function QAMetricsPage() {
   const [featureFilter, setFeatureFilter] = useState('All');
   const [specFilter, setSpecFilter] = useState('All');
 
+  const m = metrics || {};
+  const featureData = m.feature_tcs || [];
+  const specData = m.spec_tcs || [];
+  const flowData = m.flow_data || [];
+
+  const featureOptions = useMemo(() => ['All', ...featureData.map(f => f.feature)], [featureData]);
+  const specOptions = useMemo(() => ['All', ...specData.map(s => s.spec_id)], [specData]);
+
   if (!activeProject) {
     return (
       <Box>
@@ -202,14 +210,6 @@ export default function QAMetricsPage() {
   }
 
   if (loading) return <Box sx={{ textAlign: 'center', py: 6 }}><CircularProgress /></Box>;
-
-  const m = metrics || {};
-  const featureData = m.feature_tcs || [];
-  const specData = m.spec_tcs || [];
-  const flowData = m.flow_data || [];
-
-  const featureOptions = useMemo(() => ['All', ...featureData.map(f => f.feature)], [featureData]);
-  const specOptions = useMemo(() => ['All', ...specData.map(s => s.spec_id)], [specData]);
 
   // Build sankey data from real flow_data
   const sankeyReq = {
