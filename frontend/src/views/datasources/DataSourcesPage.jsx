@@ -22,7 +22,7 @@ import {
   IconSitemap,
 } from '@tabler/icons-react';
 
-import { useRtmProjects, importRtmFile, importBundledRtm } from 'api/rtm';
+import { useRtmProjects, importRtmFile, importBundledRtm, deleteRtmProject } from 'api/rtm';
 import { importStaFile, importBundledSta, useStaSummary } from 'api/sta';
 import { importFmeaFile, useFmeaSummary } from 'api/fmea';
 import { importResourceFile, useResourceSummary } from 'api/resources';
@@ -261,12 +261,13 @@ export default function DataSourcesPage() {
       setResults((r) => ({ ...r, [id]: null }));
       try {
         if (id === 'rtm') {
-          const res = await importRtmFile(file, { projectName: file.name.replace(/\.xlsx?$/i, '') });
+          let res = await importRtmFile(file, { projectName: file.name.replace(/\.xlsx?$/i, '') });
           if (res.status === 'duplicate') {
-            setResult('rtm', `File already imported as project "${res.project_id}". Delete the existing project first to re-import.`, true);
-          } else {
-            setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements`);
+            // Auto-replace: delete old project and re-import
+            await deleteRtmProject(res.project_id);
+            res = await importRtmFile(file, { projectName: file.name.replace(/\.xlsx?$/i, '') });
           }
+          setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements`);
         } else if (id === 'sta') {
           if (!activeProject?.id) {
             setResult('sta', 'No RTM project found. Import an RTM first, then try again.', true);
@@ -302,12 +303,13 @@ export default function DataSourcesPage() {
       setResults((r) => ({ ...r, [id]: null }));
       try {
         if (id === 'rtm') {
-          const res = await importBundledRtm();
+          let res = await importBundledRtm();
           if (res.status === 'duplicate') {
-            setResult('rtm', `Bundled data already imported as project "${res.project_id}". Delete the existing project to re-import.`, true);
-          } else {
-            setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements from bundled Alaris v12.6`);
+            // Auto-replace: delete old project and re-import
+            await deleteRtmProject(res.project_id);
+            res = await importBundledRtm();
           }
+          setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements from bundled Alaris v12.6`);
         } else if (id === 'sta') {
           if (!activeProject?.id) {
             setResult('sta', 'No RTM project found. Import an RTM first, then try again.', true);
