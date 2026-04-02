@@ -96,6 +96,10 @@ class SharedDatabase:
         with self._conn_lock:
             self.conn.commit()
 
+    def rollback(self):
+        with self._conn_lock:
+            self.conn.rollback()
+
     def fetchone(self, sql: str, params: tuple = ()) -> sqlite3.Row | None:
         return self.execute(sql, params).fetchone()
 

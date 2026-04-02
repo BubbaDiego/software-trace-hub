@@ -32,6 +32,14 @@ import { importSwddFile, importBundledSwdd, useSwddSummary } from 'api/swdd';
 // Data Sources — centralized upload hub for all input Excel files
 // ---------------------------------------------------------------------------
 
+function describeError(err, verb = 'Upload') {
+  if (err?.response?.data?.detail) return err.response.data.detail;
+  if (err?.code === 'ECONNABORTED') return `${verb} timed out — the file may be too large or the server is not responding.`;
+  if (err?.code === 'ERR_NETWORK' || !err?.response) return `${verb} failed — cannot reach the backend server. Is it running on port 5001?`;
+  if (err?.response?.status >= 500) return `${verb} failed — server error (${err.response.status}). Check the backend logs for details.`;
+  return err?.message || `${verb} failed`;
+}
+
 const SOURCES = [
   {
     id: 'rtm',
@@ -254,8 +262,16 @@ export default function DataSourcesPage() {
       try {
         if (id === 'rtm') {
           const res = await importRtmFile(file, { projectName: file.name.replace(/\.xlsx?$/i, '') });
-          setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements`);
+          if (res.status === 'duplicate') {
+            setResult('rtm', `File already imported as project "${res.project_id}". Delete the existing project first to re-import.`, true);
+          } else {
+            setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements`);
+          }
         } else if (id === 'sta') {
+          if (!activeProject?.id) {
+            setResult('sta', 'No RTM project found. Import an RTM first, then try again.', true);
+            return;
+          }
           const res = await importStaFile(activeProject.id, file);
           setResult('sta', `Enriched ${res.sw_trace?.matched ?? 0} SRDs with traceability data`);
         } else if (id === 'fmea') {
@@ -272,7 +288,7 @@ export default function DataSourcesPage() {
           refreshResources();
         }
       } catch (err) {
-        setResult(id, err?.response?.data?.detail || err.message || 'Upload failed', true);
+        setResult(id, describeError(err, 'Upload'), true);
       } finally {
         setLoading((l) => ({ ...l, [id]: false }));
       }
@@ -287,8 +303,16 @@ export default function DataSourcesPage() {
       try {
         if (id === 'rtm') {
           const res = await importBundledRtm();
-          setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements from bundled Alaris v12.6`);
+          if (res.status === 'duplicate') {
+            setResult('rtm', `Bundled data already imported as project "${res.project_id}". Delete the existing project to re-import.`, true);
+          } else {
+            setResult('rtm', `Imported ${res.requirements_imported?.toLocaleString() ?? ''} requirements from bundled Alaris v12.6`);
+          }
         } else if (id === 'sta') {
+          if (!activeProject?.id) {
+            setResult('sta', 'No RTM project found. Import an RTM first, then try again.', true);
+            return;
+          }
           const res = await importBundledSta(activeProject.id);
           setResult('sta', `Enriched ${res.sw_trace?.matched ?? 0} SRDs from bundled STA`);
         } else if (id === 'swdd') {
@@ -297,7 +321,7 @@ export default function DataSourcesPage() {
           refreshSwdd();
         }
       } catch (err) {
-        setResult(id, err?.response?.data?.detail || err.message || 'Import failed', true);
+        setResult(id, describeError(err, 'Import'), true);
       } finally {
         setLoading((l) => ({ ...l, [id]: false }));
       }

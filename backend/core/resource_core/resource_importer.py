@@ -26,23 +26,24 @@ def import_resource_excel(
 
     db = db or SharedDatabase.get_instance()
     wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+    try:
+        # Prefer $PivotView (normalized), fall back to Resources sheet
+        target = sheet_name
+        if not target:
+            for name in ("$PivotView", "PivotView", "Resources"):
+                if name in wb.sheetnames:
+                    target = name
+                    break
+        if not target:
+            target = wb.sheetnames[0]
 
-    # Prefer $PivotView (normalized), fall back to Resources sheet
-    target = sheet_name
-    if not target:
-        for name in ("$PivotView", "PivotView", "Resources"):
-            if name in wb.sheetnames:
-                target = name
-                break
-    if not target:
-        target = wb.sheetnames[0]
-
-    ws = wb[target]
-    rows = list(ws.iter_rows(values_only=True))
-    wb.close()
+        ws = wb[target]
+        rows = list(ws.iter_rows(values_only=True))
+    finally:
+        wb.close()
 
     if len(rows) < 2:
-        return {"status": "error", "detail": "Sheet has no data rows"}
+        raise ValueError("Sheet has no data rows")
 
     headers = [str(h).strip() if h else "" for h in rows[0]]
 
@@ -171,23 +172,27 @@ def import_resource_excel(
                 alloc_val = float(val) if val else 0.0
                 alloc_rows.append((name, project, mc_month, alloc_val))
 
-    # Insert people
-    for p in people_seen.values():
-        db.execute(
-            "INSERT INTO resource_people (name, type, team, location, manager, project, activity) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?)",
-            (p["name"], p["type"], p["team"], p["location"], p["manager"], p["project"], p["activity"]),
-        )
+    try:
+        # Insert people
+        for p in people_seen.values():
+            db.execute(
+                "INSERT INTO resource_people (name, type, team, location, manager, project, activity) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (p["name"], p["type"], p["team"], p["location"], p["manager"], p["project"], p["activity"]),
+            )
 
-    # Insert allocations
-    if alloc_rows:
-        db.executemany(
-            "INSERT INTO resource_allocations (person_name, project, month, allocation) "
-            "VALUES (?, ?, ?, ?)",
-            alloc_rows,
-        )
+        # Insert allocations
+        if alloc_rows:
+            db.executemany(
+                "INSERT INTO resource_allocations (person_name, project, month, allocation) "
+                "VALUES (?, ?, ?, ?)",
+                alloc_rows,
+            )
 
-    db.commit()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
 
     return {
         "status": "success",

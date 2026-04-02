@@ -161,53 +161,63 @@ def import_sta_excel(
         if srd:
             srd_lookup.setdefault(srd, []).append(r["id"])
 
-    # Clear previous STA data for this project (idempotent re-import)
-    for table in [
-        "rtm_sta_spec_refs",
-        "rtm_sta_module_evidence",
-        "rtm_sta_design_outputs",
-        "rtm_sta_version_verification",
-    ]:
-        db.execute(f"DELETE FROM {table} WHERE project_id = ?", (project_id,))
-    db.commit()
-
-    # Load workbook
+    # Load workbook BEFORE clearing data — so a bad file doesn't destroy existing STA data
     wb = openpyxl.load_workbook(file_path, data_only=True, read_only=True)
+    try:
+        # Auto-detect sheets
+        if sw_trace_sheet is None:
+            sw_trace_sheet = _detect_sheet(wb.sheetnames, ["trace analysis", "sw trace"])
+        if div_sheet is None:
+            div_sheet = _detect_sheet(
+                wb.sheetnames, ["design input", "verification"]
+            )
 
-    # Auto-detect sheets
-    if sw_trace_sheet is None:
-        sw_trace_sheet = _detect_sheet(wb.sheetnames, ["trace analysis", "sw trace"])
-    if div_sheet is None:
-        div_sheet = _detect_sheet(
-            wb.sheetnames, ["design input", "verification"]
+        if not sw_trace_sheet and not div_sheet:
+            raise ValueError(
+                f"No STA sheets found. Expected 'SW Trace Analysis' or 'Design Input Verification'. "
+                f"Available sheets: {wb.sheetnames}"
+            )
+
+        # Clear previous STA data for this project (idempotent re-import)
+        # Done AFTER validating the workbook so a bad file doesn't destroy existing data
+        for table in [
+            "rtm_sta_spec_refs",
+            "rtm_sta_module_evidence",
+            "rtm_sta_design_outputs",
+            "rtm_sta_version_verification",
+        ]:
+            db.execute(f"DELETE FROM {table} WHERE project_id = ?", (project_id,))
+
+        result = {
+            "status": "success",
+            "project_id": project_id,
+            "sw_trace": None,
+            "design_input_verification": None,
+        }
+
+        # ── Process SW Trace Analysis ─────────────────────────────────
+        if sw_trace_sheet and sw_trace_sheet in wb.sheetnames:
+            result["sw_trace"] = _import_sw_trace(
+                wb[sw_trace_sheet], project_id, srd_lookup, db
+            )
+
+        # ── Process Design Input Verification ─────────────────────────
+        if div_sheet and div_sheet in wb.sheetnames:
+            result["design_input_verification"] = _import_div(
+                wb[div_sheet], project_id, srd_lookup, db
+            )
+
+        # Update project enrichment timestamp
+        db.execute(
+            "UPDATE rtm_projects SET sta_enriched_at = datetime('now') WHERE id = ?",
+            (project_id,),
         )
-
-    result = {
-        "status": "success",
-        "project_id": project_id,
-        "sw_trace": None,
-        "design_input_verification": None,
-    }
-
-    # ── Process SW Trace Analysis ─────────────────────────────────
-    if sw_trace_sheet and sw_trace_sheet in wb.sheetnames:
-        result["sw_trace"] = _import_sw_trace(
-            wb[sw_trace_sheet], project_id, srd_lookup, db
-        )
-
-    # ── Process Design Input Verification ─────────────────────────
-    if div_sheet and div_sheet in wb.sheetnames:
-        result["design_input_verification"] = _import_div(
-            wb[div_sheet], project_id, srd_lookup, db
-        )
-
-    # Update project enrichment timestamp
-    db.execute(
-        "UPDATE rtm_projects SET sta_enriched_at = datetime('now') WHERE id = ?",
-        (project_id,),
-    )
-    db.commit()
-    wb.close()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        wb.close()
 
     return result
 

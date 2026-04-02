@@ -228,9 +228,7 @@ export async function importRtmFile(file, { sheetName, projectName, projectVersi
   if (projectName) params.set('project_name', projectName);
   if (projectVersion) params.set('project_version', projectVersion);
 
-  const res = await axiosServices.post(`/api/rtm/import?${params.toString()}`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  const res = await axiosServices.post(`/api/rtm/import?${params.toString()}`, form);
   mutate(EP.projects);
   return res.data;
 }

@@ -151,9 +151,7 @@ export function useStaVersions(projectId, { search, limit = 100, offset = 0 } = 
 export async function importStaFile(projectId, file) {
   const form = new FormData();
   form.append('file', file);
-  const res = await axiosServices.post(`/api/sta/import/${projectId}`, form, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  });
+  const res = await axiosServices.post(`/api/sta/import/${projectId}`, form);
   mutate(EP.rtmProjects);
   mutate(EP.summary(projectId));
   mutate(EP.rtmOverview(projectId));

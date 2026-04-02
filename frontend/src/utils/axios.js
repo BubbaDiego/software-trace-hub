@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 const axiosServices = axios.create({
-  baseURL: import.meta.env.VITE_APP_API_URL || ''
+  baseURL: import.meta.env.VITE_APP_API_URL || '',
+  timeout: 120000,  // 2 min — large Excel imports can take time
 });
 
 export default axiosServices;

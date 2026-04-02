@@ -191,139 +191,153 @@ def import_excel(
 
     # Load workbook
     wb = openpyxl.load_workbook(file_path, data_only=True, read_only=True)
-
-    # Auto-detect sheet
-    if sheet_name is None:
-        for name in wb.sheetnames:
-            if "510k" in name.lower() or "v12.6" in name.lower():
-                sheet_name = name
-                break
+    try:
+        # Auto-detect sheet
         if sheet_name is None:
-            sheet_name = wb.sheetnames[0]
+            for name in wb.sheetnames:
+                if "510k" in name.lower() or "v12.6" in name.lower():
+                    sheet_name = name
+                    break
+            if sheet_name is None:
+                sheet_name = wb.sheetnames[0]
 
-    if sheet_name not in wb.sheetnames:
-        wb.close()
-        raise ValueError(
-            f"Sheet '{sheet_name}' not found. Available: {wb.sheetnames}"
-        )
+        if sheet_name not in wb.sheetnames:
+            raise ValueError(
+                f"Sheet '{sheet_name}' not found. Available: {wb.sheetnames}"
+            )
 
-    ws = wb[sheet_name]
+        ws = wb[sheet_name]
 
-    # Derive project name/version from sheet if not provided
-    if not project_name:
-        project_name = sheet_name
-    if not project_version:
-        for token in sheet_name.replace("-", " ").split():
-            if token.startswith("v") and any(c.isdigit() for c in token):
-                project_version = token
-                break
+        # Derive project name/version from sheet if not provided
+        if not project_name:
+            project_name = sheet_name
+        if not project_version:
+            for token in sheet_name.replace("-", " ").split():
+                if token.startswith("v") and any(c.isdigit() for c in token):
+                    project_version = token
+                    break
 
-    # Create project record
-    db.execute(
-        "INSERT INTO rtm_projects (name, version, sheet_name, file_hash) "
-        "VALUES (?, ?, ?, ?)",
-        (project_name, project_version, sheet_name, file_hash),
-    )
-    db.commit()
-    project_id = db.fetchone(
-        "SELECT id FROM rtm_projects WHERE file_hash = ?", (file_hash,)
-    )["id"]
-
-    # Parse rows
-    req_count = 0
-    evidence_count = 0
-    skipped = 0
-    first_row = True
-
-    for row in ws.iter_rows(max_col=32, values_only=True):
-        # Skip header row
-        if first_row:
-            first_row = False
-            continue
-
-        # Skip empty rows
-        sno = _cell_int(row, COL_SNO)
-        srd_id = _cell_str(row, COL_SRD_ID)
-        feature = _cell_str(row, COL_FEATURE)
-
-        if sno is None and not srd_id and not feature:
-            skipped += 1
-            continue
-
-        # Insert requirement
+        # Create project record
         db.execute(
-            "INSERT INTO rtm_requirements "
-            "(project_id, sno, composite_key, software_feature, feature, "
-            " sub_feature, software_function, tracker_id, hazard_id, "
-            " srd_id, impacted_modules, prd_modules, srs_id, spec_id, "
-            " project_status, comment, trace_status) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-            (
-                project_id,
-                sno,
-                _cell_str(row, COL_COMPOSITE),
-                _cell_str(row, COL_SW_FEATURE),
-                feature,
-                _cell_str(row, COL_SUB_FEATURE),
-                _cell_str(row, COL_SW_FUNCTION),
-                _cell_str(row, COL_TRACKER_ID),
-                _cell_str(row, COL_HAZARD_ID),
-                srd_id,
-                _cell_str(row, COL_IMPACTED_MODULES),
-                _cell_str(row, COL_PRD_MODULES),
-                _cell_str(row, COL_SRS_ID),
-                _cell_str(row, COL_SPEC_ID),
-                _cell_str(row, COL_PROJECT_STATUS),
-                _cell_str(row, COL_COMMENT),
-                TraceStatus.MISSING.value,  # updated below
-            ),
+            "INSERT INTO rtm_projects (name, version, sheet_name, file_hash) "
+            "VALUES (?, ?, ?, ?)",
+            (project_name, project_version, sheet_name, file_hash),
         )
-        req_id = db.fetchone("SELECT last_insert_rowid() as id")["id"]
-        req_count += 1
+        db.commit()
+        project_id = db.fetchone(
+            "SELECT id FROM rtm_projects WHERE file_hash = ?", (file_hash,)
+        )["id"]
 
-        # Parse evidence columns
-        has_manual = False
-        has_cats = False
+        # Parse rows
+        req_count = 0
+        evidence_count = 0
+        skipped = 0
+        first_row = True
 
-        for col_idx, ev_type, module_name in EVIDENCE_MAP:
-            raw = _cell_str(row, col_idx)
-            tc_ids = _parse_tc_ids(raw)
-            if not tc_ids:
+        for row in ws.iter_rows(max_col=32, values_only=True):
+            # Skip header row
+            if first_row:
+                first_row = False
                 continue
 
+            # Skip empty rows
+            sno = _cell_int(row, COL_SNO)
+            srd_id = _cell_str(row, COL_SRD_ID)
+            feature = _cell_str(row, COL_FEATURE)
+
+            if sno is None and not srd_id and not feature:
+                skipped += 1
+                continue
+
+            # Insert requirement
             db.execute(
-                "INSERT INTO rtm_test_evidence "
-                "(requirement_id, evidence_type, module_name, tc_ids_json, tc_count) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (req_id, ev_type.value, module_name, json.dumps(tc_ids), len(tc_ids)),
+                "INSERT INTO rtm_requirements "
+                "(project_id, sno, composite_key, software_feature, feature, "
+                " sub_feature, software_function, tracker_id, hazard_id, "
+                " srd_id, impacted_modules, prd_modules, srs_id, spec_id, "
+                " project_status, comment, trace_status) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                (
+                    project_id,
+                    sno,
+                    _cell_str(row, COL_COMPOSITE),
+                    _cell_str(row, COL_SW_FEATURE),
+                    feature,
+                    _cell_str(row, COL_SUB_FEATURE),
+                    _cell_str(row, COL_SW_FUNCTION),
+                    _cell_str(row, COL_TRACKER_ID),
+                    _cell_str(row, COL_HAZARD_ID),
+                    srd_id,
+                    _cell_str(row, COL_IMPACTED_MODULES),
+                    _cell_str(row, COL_PRD_MODULES),
+                    _cell_str(row, COL_SRS_ID),
+                    _cell_str(row, COL_SPEC_ID),
+                    _cell_str(row, COL_PROJECT_STATUS),
+                    _cell_str(row, COL_COMMENT),
+                    TraceStatus.MISSING.value,  # updated below
+                ),
             )
-            evidence_count += 1
+            req_id = db.fetchone("SELECT last_insert_rowid() as id")["id"]
+            req_count += 1
 
-            # Track manual vs CATS
-            if "cats" in ev_type.value or "scenario_cats" == ev_type.value:
-                has_cats = True
-            else:
-                has_manual = True
+            # Parse evidence columns
+            has_manual = False
+            has_cats = False
 
-        # Update trace status
-        has_spec = bool(_cell_str(row, COL_SPEC_ID))
-        trace = _compute_trace_status(has_manual, has_cats, has_spec)
+            for col_idx, ev_type, module_name in EVIDENCE_MAP:
+                raw = _cell_str(row, col_idx)
+                tc_ids = _parse_tc_ids(raw)
+                if not tc_ids:
+                    continue
+
+                db.execute(
+                    "INSERT INTO rtm_test_evidence "
+                    "(requirement_id, evidence_type, module_name, tc_ids_json, tc_count) "
+                    "VALUES (?, ?, ?, ?, ?)",
+                    (req_id, ev_type.value, module_name, json.dumps(tc_ids), len(tc_ids)),
+                )
+                evidence_count += 1
+
+                # Track manual vs CATS
+                if "cats" in ev_type.value or "scenario_cats" == ev_type.value:
+                    has_cats = True
+                else:
+                    has_manual = True
+
+            # Update trace status
+            has_spec = bool(_cell_str(row, COL_SPEC_ID))
+            trace = _compute_trace_status(has_manual, has_cats, has_spec)
+            db.execute(
+                "UPDATE rtm_requirements SET trace_status = ? WHERE id = ?",
+                (trace, req_id),
+            )
+
+            # Batch commit every 500 rows
+            if req_count % 500 == 0:
+                db.commit()
+
+        # Final commit
         db.execute(
-            "UPDATE rtm_requirements SET trace_status = ? WHERE id = ?",
-            (trace, req_id),
+            "UPDATE rtm_projects SET total_requirements = ? WHERE id = ?",
+            (req_count, project_id),
         )
-
-        # Batch commit every 500 rows
-        if req_count % 500 == 0:
+        db.commit()
+    except Exception:
+        db.rollback()
+        # Clean up partial project record if it was created
+        try:
+            db.execute("DELETE FROM rtm_test_evidence WHERE requirement_id IN "
+                        "(SELECT id FROM rtm_requirements WHERE project_id IN "
+                        "(SELECT id FROM rtm_projects WHERE file_hash = ?))", (file_hash,))
+            db.execute("DELETE FROM rtm_requirements WHERE project_id IN "
+                        "(SELECT id FROM rtm_projects WHERE file_hash = ?)", (file_hash,))
+            db.execute("DELETE FROM rtm_projects WHERE file_hash = ?", (file_hash,))
             db.commit()
-
-    # Final commit
-    db.execute(
-        "UPDATE rtm_projects SET total_requirements = ? WHERE id = ?",
-        (req_count, project_id),
-    )
-    db.commit()
-    wb.close()
+        except Exception:
+            pass
+        raise
+    finally:
+        wb.close()
 
     return {
         "status": "success",
