@@ -332,10 +332,10 @@ export default function DataSourcesPage() {
   // Build status for each source
   const statuses = {
     rtm: activeProject
-      ? { imported: true, count: activeProject.requirements_count, label: activeProject.name }
+      ? { imported: true, count: activeProject.total_requirements, label: activeProject.name }
       : { imported: false },
-    sta: staSummary?.srs_count > 0
-      ? { imported: true, count: staSummary.srs_count, label: 'STA Enrichment', rtmReady: !!activeProject }
+    sta: staSummary?.enriched
+      ? { imported: true, count: staSummary.spec_refs, label: 'STA Enrichment', rtmReady: !!activeProject }
       : { imported: false, rtmReady: !!activeProject },
     fmea: fmeaSummary?.imported
       ? { imported: true, count: fmeaSummary.fmea_records, label: `${fmeaSummary.common_causes} common causes` }
